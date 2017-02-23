@@ -999,7 +999,8 @@ public class HostPopulation {
                                     if (Random.nextBoolean(chanceOfSuccess)) {
                                             // add mutations before transmission
                                             Virus mutV = v.mutate();
-                                            Phenotype mutP = mutV.getPhenotype(); // new mutant phenotype passed up 
+                                            Phenotype mutP = mutV.getPhenotype(); // new mutant phenotype passed up, or pass up from antigenictree
+                                            // here could pass up antigenType - could also create a distance trait to pass up
                                             if (!mutP.lethal()) {
                                                 //sH.infect(mutV,deme);
                                                 iH.infect(v, deme); // why are they infecting the already infected host

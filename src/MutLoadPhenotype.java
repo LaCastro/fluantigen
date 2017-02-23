@@ -131,19 +131,21 @@ public class MutLoadPhenotype implements Phenotype {
                 if (Parameters.day >= Parameters.antigenicEvoStartDay) {
                     int antigenicMutations = Random.nextPoisson(Parameters.lambdaAntigenic);
                     if (antigenicMutations > 0 & !lethality) {
-                        double distanceFromParent = 0.0;
+                    	Parameters.novelAntigen = true; 
+                    	double distanceFromParent = 0.0;
                         for (int m = 0; m < antigenicMutations; m++) {
                             if (Parameters.antigenicGammaShape == 1.0) {
                                 distanceFromParent += Random.nextExponential(Parameters.meanAntigenicSize);
                             } else {
                                 distanceFromParent += Random.nextGamma(Parameters.antigenicGammaShape, (Parameters.meanAntigenicSize / Parameters.antigenicGammaShape));
                             }
+                            System.out.format("%d %.4f %d %.4f", Parameters.day, Parameters.getDate(), type, distanceFromParent);
+                            System.out.println();
                         }
                         
-                        System.out.println("New ant mutant distance = " + distanceFromParent + " Day = " + Parameters.day + " Antigen Mutation on Type = " + type);
                         if (distanceFromParent >= Parameters.thresholdAntigenicSize) {
                             type = AntigenicTree.add(antigenType, distanceFromParent);
-                            System.out.println("Distance is Far Enough, new antigen type created");
+                            //System.out.println("Distance is Far Enough, new antigen type created");
                         }
                     }
                 }
@@ -171,4 +173,10 @@ public class MutLoadPhenotype implements Phenotype {
             return antigenType;
         }
      
+
+      /*  public void printTrackAntigens(PrintStream stream){
+        	stream.printf("%.6f\t%d\t%.6f\t%.4f\t%.4f\t%d\t%.6f\t%.6f", Parameters.getDate(), type, distanceFromParent);
+        	stream.println();
+        }
+        */
 }

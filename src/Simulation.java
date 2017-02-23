@@ -331,13 +331,13 @@ public class Simulation {
 		stream.println();
 	}
       
-        
-        /*  public void printTrackAntigens(PrintStream stream){
-         *   	stream.printf("%.6f\t%d\t%.6f\t%.4f\t%.4f\t%d\t%.6f\t%.6f", Parameters.getDate(), type, distanceFromParent, getDiversity(), getNetau(), getS(), meanBetaDist, meanSigmaDist);
-         *    stream.println();
-         *  }
-         */    
-       
+        public void printTrackAntigens(PrintStream stream) {
+    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d", Parameters.getDate(), getDiversity(), getTmrca(), 
+    					getNetau(), getSerialInterval(), getAntigenicDiversity(), getN(), getS(), getI(), getR(), getCases());
+    		stream.println();
+    	}
+          
+   
         public void printFitnessSamples() {
             
                 try {
@@ -380,13 +380,11 @@ public class Simulation {
         
         
         public void printTrackAntigenHeader(PrintStream stream) {
-    		// TODO 
-        	stream.print("date\tantigenictype\tdistance\tdiversity\tantigenDiversity\tNeTau\tgeS\tmeanBetaDist\tmeanSigmaDist");
+        	stream.print("day\tdiversity\ttmrca\tnetau\tserialInterval\tantigenicDiversity\tN\tS\tI\tR\tcases\tmeanLoad\tantigenicTypes\tcumulativeTypes");
     		stream.println();
     	}
         
-        
-        
+
         
         public void printAntigenicDistances(ArrayList<Integer> types) {
                 AntigenicTree.printDistanceMatrix(types);
@@ -537,7 +535,7 @@ public class Simulation {
 			seriesFile.delete();
 			seriesFile.createNewFile();
 			PrintStream seriesStream = new PrintStream(seriesFile);
-			System.out.println("day\tdiversity\ttmrca\tnetau\tserialInterval\tantigenicDiversity\tN\tS\tI\tR\tcases\tmeanLoad\tantigenicTypes\tcumulativeTypes");
+			System.out.println("day\tsimulationDay\tantigenType\tdistance"); // console output for antigenic mutations
 			printHeader(seriesStream);
                         
                         File mutationFile = new File("out.mutationSeries.txt");// changed to a text file
@@ -563,7 +561,14 @@ public class Simulation {
 				stepForward();
 				
 
-                
+                if(Parameters.novelAntigen) {
+                	//System.out.println("Novel antigen-time to update");
+                	updateDiversity(); // make sure this isn't pushing anything 
+                	updateFitnessDists(); // make sure this isn't pushing anything 
+                	printTrackAntigens(trackAntigenStream);
+                	
+        			Parameters.novelAntigen = false;
+                }
                 /* Here I want to be able to UpdateDiversity, UpdateFitnessDists
                  * Print out printTrackAntigens(trackAntigenStream)
                  */
@@ -572,7 +577,7 @@ public class Simulation {
                                     daysList.add(Parameters.getDate());
                                     updateDiversity();
                                     updateFitnessDists(); // new for tracking viral fitness distributions
-                                    printState();
+                                    //printState();
                                     if (Parameters.day > Parameters.burnin) {
                                         printState(seriesStream);
                                         printMutations(mutationStream);

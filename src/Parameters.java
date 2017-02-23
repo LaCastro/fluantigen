@@ -12,7 +12,8 @@ public class Parameters {
 	public static int day = 0;
 	public static Virus urVirus = null;
 	public static Phenotype urImmunity = null;
-        public static double meanLoad = 0.0;
+    public static double meanLoad = 0.0;
+    public static boolean novelAntigen = false;    // to determine whether there is a novelantigen or not 
 	
 	// simulation parameters
 	public static int burnin = 0;
