@@ -1,1 +1,0 @@
-date	antigenictype	distance	diversity	antigenDiversity	NeTau	geS	meanBetaDist	meanSigmaDist
