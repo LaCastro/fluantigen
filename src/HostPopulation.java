@@ -560,7 +560,7 @@ public class HostPopulation {
         }
         
         // Not using this since absorbed into getViralFitnessDist
-        public double getAntigenicLoadDistribution() {
+/*        public double getAntigenicLoadDistribution() {
             
             // New method for computing mean and variance of the antigenic load experienced by viral population
             // For each unique antigenic type, immunity is averaged over a set of sampled hosts' immune histories
@@ -624,23 +624,23 @@ public class HostPopulation {
             return meanHostImmunity;
             
         }
-        
+ */       
         
         public int getAntigenicCount() {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
-                for (int i = 0; i < getI(); i++) {
-                    Host h = infecteds.get(i);
-                    Virus v = h.getInfection();
-                    Phenotype p = v.getPhenotype();
-                    int type = p.antigenicType();
-                    if (!typeList.contains(type)) {
+                for (int i = 0; i < getI(); i++) { // for how many infecteds
+                    Host h = infecteds.get(i); // get infected
+                    Virus v = h.getInfection(); // get virus
+                    Phenotype p = v.getPhenotype(); // get phenotype of virus
+                    int type = p.antigenicType(); // get antigenic type of virus
+                    if (!typeList.contains(type)) { // if it doesn't have it add it
                         typeList.add(type);
                     }
                 }
             }
-            int types = typeList.size();
-            return types;
+            int types = typeList.size(); 
+            return types; // return size 
         }
         
         public ArrayList<Integer> getAntigenicTypes() {
@@ -658,24 +658,32 @@ public class HostPopulation {
             }
             return typeList;
         }
-        
-        public ArrayList<Integer> getAntigenicTypeCounts(ArrayList<Integer> typeList) {
+        // Changing so that it's a frequency, was originally integer but changing to double
+        public ArrayList<Double> getAntigenicTypeCounts(ArrayList<Integer> typeList) {
             ArrayList<Integer> typeCounts = new ArrayList<Integer>();
             for (int t = 0; t < typeList.size(); t++) {
                 typeCounts.add(0);
             }
-            if (getI() > 0) {
+           double currents = getI();
+            if (getI() > 0) {     	
                 for (int i = 0; i < getI(); i++) {
                     Host h = infecteds.get(i);
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     int type = p.antigenicType();
                     int typeIndex = typeList.indexOf(type);
-                    typeCounts.set(typeIndex, typeCounts.get(typeIndex) + 1);
-                    
+                    typeCounts.set(typeIndex, typeCounts.get(typeIndex) + 1);    
                 }
             }
-            return typeCounts;
+            // Lauren Added This 
+            
+            
+            ArrayList<Double> typeFrequencies = new ArrayList<Double>();
+            for (int t = 0; t < typeList.size(); t++) {
+            	typeFrequencies.add(typeCounts.get(t)*1.0/currents);
+            }        
+           return typeFrequencies;
+           // return typeCounts;
         }
 
         

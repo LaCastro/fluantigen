@@ -332,8 +332,8 @@ public class Simulation {
 	}
       
         public void printTrackAntigens(PrintStream stream) {
-    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d", Parameters.getDate(), getDiversity(), getTmrca(), 
-    					getNetau(), getSerialInterval(), getAntigenicDiversity(), getN(), getS(), getI(), getR(), getCases());
+    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d\n", Parameters.getDate(), getDiversity(), getTmrca(), 
+    					getNetau(), getSerialInterval(), getAntigenicDiversity(), getN(), getS(), getI(), getR(), getCases(), getMeanLoad(),getAnitgenicTypes(), getCumlAntigenicTypes());
     		stream.println();
     	}
           
@@ -384,7 +384,10 @@ public class Simulation {
     		stream.println();
     	}
         
-
+        public void printTrackFrequenciesHeader(PrintStream stream) {
+        	stream.print("day\tantigentype\frequency");
+        	stream.println();
+        }
         
         public void printAntigenicDistances(ArrayList<Integer> types) {
                 AntigenicTree.printDistanceMatrix(types);
@@ -485,6 +488,21 @@ public class Simulation {
                 
                 
         }
+        
+        // TODO - FIX 
+        public void updateFrequencies() {
+        	HostPopulation hp = demes.get(0);
+        	ArrayList<Integer> typeList = hp.getAntigenicTypes();
+        	//ArrayList<Integer> typeCounts = hp.getAntigenicTypeCounts(typeList);
+        	// need to pull out the index of typeList and typeCounts 
+        	ArrayList<Double> typeFrequencies = hp.getAntigenicTypeCounts(typeList);
+            
+        	for (int i = 0; i < typeList.size(); i++) {
+        		System.out.println(typeList.get(i) + " " + typeFrequencies.get(i));
+        		
+        	
+        	}
+        }
 	
 	public void pushLists() {
 		diversityList.add(diversity);
@@ -556,6 +574,15 @@ public class Simulation {
                         PrintStream trackAntigenStream = new PrintStream(trackAntigenFile);
                         printTrackAntigenHeader(trackAntigenStream);
                         
+                        //TO DO - Change the output 
+                        
+                        
+                        File trackFrequenciesFile = new File("out.antigenFrequencies.txt");
+                        trackFrequenciesFile.delete();
+                        trackFrequenciesFile.createNewFile();
+                        PrintStream trackFrequenciesStream = new PrintStream(trackFrequenciesFile);
+                        printTrackFrequenciesHeader(trackFrequenciesStream);
+                        
 			for (int i = 0; i < Parameters.endDay; i++) {
 				
 				stepForward();
@@ -566,6 +593,7 @@ public class Simulation {
                 	updateDiversity(); // make sure this isn't pushing anything 
                 	updateFitnessDists(); // make sure this isn't pushing anything 
                 	printTrackAntigens(trackAntigenStream);
+                	updateFrequencies(); // New method to update frequencies of each antigen
                 	
         			Parameters.novelAntigen = false;
                 }
