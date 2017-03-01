@@ -177,6 +177,24 @@ public class Simulation {
             return types;
         }
         
+        public ArrayList<Integer> getAntigenicTypes() {
+            ArrayList<Integer> typeList = new ArrayList<Integer>();
+            HostPopulation hp = demes.get(0);
+    
+            if (getI() > 0) {
+                for (int i = 0; i < getI(); i++) {
+                    Host h = hp.getInfecteds().get(i);
+                    Virus v = h.getInfection();
+                    Phenotype p = v.getPhenotype();
+                    int type = p.antigenicType();
+                    if (!typeList.contains(type)) {
+                        typeList.add(type);
+                    }
+                }
+            }
+            return typeList;
+        }
+        
         public int getCumlAntigenicTypes() {
             //int cumlTypes = AntigenicTree.nodeCount();
             ArrayList<Integer> treeTypes = AntigenicTree.getTreeTypes();
@@ -330,6 +348,14 @@ public class Simulation {
 		stream.printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f", Parameters.getDate(), meanRDist, varRDist, meanBetaDist, varBetaDist, meanSigmaDist, varSigmaDist, covBetaSigmaDist);
 		stream.println();
 	}
+        
+        public void printFrequencies(PrintStream stream, ArrayList<Double> currentFrequencies, ArrayList<Integer> typeList) {
+        	for (int i = 0; i < currentFrequencies.size(); i++) {
+        		stream.printf("%.4f\t%d\t%d\t%.6f", Parameters.getDate(), Parameters.day,typeList.get(i), currentFrequencies.get(i)); 
+            	stream.println();
+        		}
+        	}
+       	
       
         public void printTrackAntigens(PrintStream stream) {
     		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d\n", Parameters.getDate(), getDiversity(), getTmrca(), 
@@ -385,7 +411,7 @@ public class Simulation {
     	}
         
         public void printTrackFrequenciesHeader(PrintStream stream) {
-        	stream.print("day\tantigentype\frequency");
+        	stream.print("simTime\tday\tantigentype\tfrequency");
         	stream.println();
         }
         
@@ -456,12 +482,12 @@ public class Simulation {
 				double dist = vA.distance(vB);
 				diversity += dist;
 				if (dist > tmrca) {
-					tmrca = dist;
+					tmrca = dist; // if the distance is greater, keep putting back the most recent common ancestor?
 				}
 				antigenicDiversity += vA.antigenicDistance(vB);
 				coalOpp += coalWindow;
-				coalCount += vA.coalescence(vB, coalWindow);
-				serialInterval += vA.serialInterval();
+				coalCount += vA.coalescence(vB, coalWindow); // TODO look this up: is there a coalescence event within x amount of time?
+				serialInterval += vA.serialInterval(); // birth of virus A to its parents bitrth
 			}
 		}	
 	
@@ -490,18 +516,18 @@ public class Simulation {
         }
         
         // TODO - FIX 
-        public void updateFrequencies() {
+        public ArrayList<Double> updateFrequencies() {
         	HostPopulation hp = demes.get(0);
         	ArrayList<Integer> typeList = hp.getAntigenicTypes();
         	//ArrayList<Integer> typeCounts = hp.getAntigenicTypeCounts(typeList);
         	// need to pull out the index of typeList and typeCounts 
         	ArrayList<Double> typeFrequencies = hp.getAntigenicTypeCounts(typeList);
             
-        	for (int i = 0; i < typeList.size(); i++) {
-        		System.out.println(typeList.get(i) + " " + typeFrequencies.get(i));
-        		
         	
+        	for (int i = 0; i < typeList.size(); i++) {
+        		//System.out.println(typeList.get(i) + " " + typeFrequencies.get(i));
         	}
+			return typeFrequencies;
         }
 	
 	public void pushLists() {
@@ -553,7 +579,7 @@ public class Simulation {
 			seriesFile.delete();
 			seriesFile.createNewFile();
 			PrintStream seriesStream = new PrintStream(seriesFile);
-			System.out.println("day\tsimulationDay\tantigenType\tdistance"); // console output for antigenic mutations
+			System.out.println("day\tsimDay\toriAntigenType\tdistance"); // console output for antigenic mutations
 			printHeader(seriesStream);
                         
                         File mutationFile = new File("out.mutationSeries.txt");// changed to a text file
@@ -593,8 +619,9 @@ public class Simulation {
                 	updateDiversity(); // make sure this isn't pushing anything 
                 	updateFitnessDists(); // make sure this isn't pushing anything 
                 	printTrackAntigens(trackAntigenStream);
-                	updateFrequencies(); // New method to update frequencies of each antigen
-                	
+                	ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
+                	ArrayList<Integer> typeList = getAntigenicTypes();
+                	printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
         			Parameters.novelAntigen = false;
                 }
                 /* Here I want to be able to UpdateDiversity, UpdateFitnessDists
@@ -610,6 +637,10 @@ public class Simulation {
                                         printState(seriesStream);
                                         printMutations(mutationStream);
                                         printFitness(fitnessStream);
+                                        ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
+                                    	ArrayList<Integer> typeList = getAntigenicTypes();
+                                    	printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
+                            			
                                         pushLists();
                                     }
                                     resetCases();

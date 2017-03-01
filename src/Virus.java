@@ -184,7 +184,7 @@ public class Virus {
 			if (lineageA.getParent() != null) {		
 				lineageA = lineageA.getParent();
 				time = lineageA.getBirth();
-				ancestry.add(lineageA);
+				ancestry.add(lineageA); // getting lineages of births that occurred prior to the window?
 			}
 			else {
 				break;

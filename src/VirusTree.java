@@ -131,7 +131,7 @@ public class VirusTree {
 //				}
 //			}
 //		}
-		
+	
 		for (double i = 0; i < Parameters.getDate(); i+=0.1) {
 			Virus v = getRandomTipFromTo(i,i+0.1);
 			if (v != null) {
@@ -146,9 +146,9 @@ public class VirusTree {
 		
 	// prune tips
 	public static void pruneTips() {
-	
 		List<Virus> reducedTips = new ArrayList<Virus>();
 		for (int d = 0; d < Parameters.demeCount; d++) {
+			
 			double keepProportion = (double) Parameters.tipSamplesPerDeme / (double) getDemeCount(d);
 			for (Virus v : tips) {
 				if (Random.nextBoolean(keepProportion) && v.getDeme() == d) {
@@ -162,7 +162,7 @@ public class VirusTree {
                 samples.addAll(tips);
 		tips = reducedTips;
                 System.out.println("Printing tree with " + tips.size() + " tips");
-	
+                
 	}
         
         public static void getMRCASeries(ArrayList<Double> dates) {
@@ -448,7 +448,7 @@ public class VirusTree {
             }
             
             try {
-                File seriesFile = new File("out.antigenicSamples");		
+                File seriesFile = new File("out.antigenicSamples.txt");		
                 seriesFile.delete();
                 seriesFile.createNewFile();
                 PrintStream stream = new PrintStream(seriesFile);    
@@ -715,7 +715,7 @@ public class VirusTree {
 			if (vp.getNumberOfChildren() == 1) {
                             // and if tracking viral lineage states
                             Phenotype vPheno = v.getPhenotype();
-                            Phenotype vpPheno = v.getPhenotype();
+                            Phenotype vpPheno = v.getPhenotype(); // this looks like an error 
                             int vMutLoad = vPheno.mutLoad();
                             int vpMutLoad = vpPheno.mutLoad();
                             int vAntType = vPheno.antigenicType();
@@ -1018,7 +1018,7 @@ public class VirusTree {
 	public static void printTips() {
 		
 		try {
-			File tipFile = new File("out.tips");
+			File tipFile = new File("out.tips.txt");
 			tipFile.delete();
 			tipFile.createNewFile();
 			PrintStream tipStream = new PrintStream(tipFile);

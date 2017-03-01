@@ -66,7 +66,7 @@ public class HostPopulation {
                                 Phenotype p = new MutLoadPhenotype(theta);
                                 v.setPhenotype(p);
                                 Host h = new Host(v);
-				infecteds.add(h);
+				getInfecteds().add(h);
 			}	
 		
 		}
@@ -96,7 +96,7 @@ public class HostPopulation {
         					susceptibles.add(h);	
         				}
         				else {
-        					infecteds.add(h);
+        					getInfecteds().add(h);
         				}
         			}
     			}
@@ -113,13 +113,13 @@ public class HostPopulation {
 	
 	// accessors
 	public int getN() {
-		return susceptibles.size() + infecteds.size() + recovereds.size();
+		return susceptibles.size() + getInfecteds().size() + recovereds.size();
 	}
 	public int getS() {
 		return susceptibles.size();
 	}
 	public int getI() {
-		return infecteds.size();
+		return getInfecteds().size();
 	}
 	public int getR() {
 		return recovereds.size();
@@ -170,7 +170,7 @@ public class HostPopulation {
 		Host h = null;
 		if (getI() > 0) {
 			int index = Random.nextInt(0,getI()-1);
-			h = infecteds.get(index);
+			h = getInfecteds().get(index);
 		}
 		return h;
 	}
@@ -230,7 +230,7 @@ public class HostPopulation {
             if (infections > 0) {
                 int totalLoad = 0;
                 for (int i = 0; i < infections; i++) {
-                    Host h = infecteds.get(i);
+                    Host h = getInfecteds().get(i);
                     Virus v = h.getInfection(); 
                     Phenotype p = v.getPhenotype();
                     totalLoad += p.mutLoad();
@@ -273,7 +273,7 @@ public class HostPopulation {
             
             for (int i = 0; i < infections; i++) {
                 
-                Host h = infecteds.get(i);
+                Host h = getInfecteds().get(i);
                 Virus v = h.getInfection();
                 Phenotype p = v.getPhenotype();
                 
@@ -438,7 +438,7 @@ public class HostPopulation {
             
             for (int i = 0; i < infections; i++) {
                 
-                Host h = infecteds.get(i);
+                Host h = getInfecteds().get(i);
                 Virus v = h.getInfection();
                 Phenotype p = v.getPhenotype();
                 
@@ -529,7 +529,7 @@ public class HostPopulation {
                     
                     // If the number of host immune histories to sample is greater than the host pop size, loop through each host rather than sampling randomly
                     List<Host> allHosts = new ArrayList<Host>(); //includes S, I, and R hosts
-                    allHosts.addAll(susceptibles); allHosts.addAll(infecteds); allHosts.addAll(recovereds);
+                    allHosts.addAll(susceptibles); allHosts.addAll(getInfecteds()); allHosts.addAll(recovereds);
                     double sumTypeImmunity = 0;
                     for (int s = 0; s < allHosts.size(); s++) {
                         Host sH = allHosts.get(s);
@@ -630,7 +630,7 @@ public class HostPopulation {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
                 for (int i = 0; i < getI(); i++) { // for how many infecteds
-                    Host h = infecteds.get(i); // get infected
+                    Host h = getInfecteds().get(i); // get infected
                     Virus v = h.getInfection(); // get virus
                     Phenotype p = v.getPhenotype(); // get phenotype of virus
                     int type = p.antigenicType(); // get antigenic type of virus
@@ -647,7 +647,7 @@ public class HostPopulation {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
                 for (int i = 0; i < getI(); i++) {
-                    Host h = infecteds.get(i);
+                    Host h = getInfecteds().get(i);
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     int type = p.antigenicType();
@@ -667,7 +667,7 @@ public class HostPopulation {
            double currents = getI();
             if (getI() > 0) {     	
                 for (int i = 0; i < getI(); i++) {
-                    Host h = infecteds.get(i);
+                    Host h = getInfecteds().get(i);
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     int type = p.antigenicType();
@@ -698,7 +698,7 @@ public class HostPopulation {
             int infections = getI();
             if (infections > 0) {
                 for (int i = 0; i < infections; i++) {
-                    Host h = infecteds.get(i);
+                    Host h = getInfecteds().get(i);
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     slot = p.mutLoad();
@@ -720,9 +720,9 @@ public class HostPopulation {
 	}	
 	public void removeInfected(int i) {
 		int lastIndex = getI() - 1;
-		Host lastHost = infecteds.get(lastIndex);
-		infecteds.set(i,lastHost);
-		infecteds.remove(lastIndex);
+		Host lastHost = getInfecteds().get(lastIndex);
+		getInfecteds().set(i,lastHost);
+		getInfecteds().remove(lastIndex);
 	}
 	public void removeRecovered(int i) {
 		int lastIndex = getR() - 1;
@@ -770,7 +770,7 @@ public class HostPopulation {
 		//contactMutAtTrans(); //<-mutations have to occur at transmission events
                 contactByMutClass();
                 //recoverFix();
-                recoverByClass();
+                recoverByClass(); 
 		if (Parameters.transcendental) { 
 			loseImmunity(); 
 		}
@@ -794,7 +794,7 @@ public class HostPopulation {
             ArrayList<Integer> kList = new ArrayList<Integer>();
             if (infections > 0) {
                 for (int i = 0; i < infections; i++) {
-                    Host h = infecteds.get(i);
+                    Host h = getInfecteds().get(i);
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     int k = p.mutLoad();
@@ -811,7 +811,7 @@ public class HostPopulation {
             }
             
             for (int i = 0; i < infections; i++) {
-                infectionsByClass.get(kList.get(i)).add(infecteds.get(i));
+                infectionsByClass.get(kList.get(i)).add(getInfecteds().get(i));
             }
             
         }
@@ -867,7 +867,7 @@ public class HostPopulation {
 		for (int i = 0; i < births; i++) {
 			if (getI()>0) {
 				int index = getRandomI();
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				h.reset();
 				removeInfected(index);
 				susceptibles.add(h);
@@ -899,7 +899,7 @@ public class HostPopulation {
 				// get indices and objects
 				int index = getRandomI();
 				int sndex = getRandomS();			
-				Host iH = infecteds.get(index);			
+				Host iH = getInfecteds().get(index);			
 				Host sH = susceptibles.get(sndex);						
 				Virus v = iH.getInfection();
 								
@@ -910,7 +910,7 @@ public class HostPopulation {
 				if (Random.nextBoolean(chanceOfSuccess)) {
 					sH.infect(v,deme);
 					removeSusceptible(sndex);
-					infecteds.add(sH);
+					getInfecteds().add(sH);
 					cases++;
 				}
 			
@@ -932,12 +932,12 @@ public class HostPopulation {
 		
 				// get indices and objects
 				int index = getRandomI();
-                                while (newParents.contains(infecteds.get(index)) || newInfections.contains(infecteds.get(index))) { //or new infections?
+                                while (newParents.contains(getInfecteds().get(index)) || newInfections.contains(getInfecteds().get(index))) { //or new infections?
                                     //System.out.println("Already a parent");
                                     index = getRandomI();
                                 }
 				int sndex = getRandomS();			
-				Host iH = infecteds.get(index);			
+				Host iH = getInfecteds().get(index);			
 				Host sH = susceptibles.get(sndex);						
 				Virus v = iH.getInfection();
                                 
@@ -954,7 +954,7 @@ public class HostPopulation {
                                             iH.infect(v, deme);
                                             sH.infectWithMutant(mutV, deme);
                                             removeSusceptible(sndex);
-                                            infecteds.add(sH);
+                                            getInfecteds().add(sH);
                                             cases++;
                                             newParents.add(iH);
                                             newInfections.add(sH);
@@ -1014,7 +1014,7 @@ public class HostPopulation {
                                                 iH.infect(v, deme); // why are they infecting the already infected host
                                                 sH.infectWithMutant(mutV, deme);
                                                 removeSusceptible(sndex);
-                                                infecteds.add(sH);
+                                                getInfecteds().add(sH);
                                                 cases++;
                                                 newParents.add(iH);
                                                 newInfections.add(sH);
@@ -1050,7 +1050,7 @@ public class HostPopulation {
 				if (Random.nextBoolean(chanceOfSuccess)) {
 					sH.infect(v,deme);
 					removeSusceptible(sndex);
-					infecteds.add(sH);
+					getInfecteds().add(sH);
 					cases++;
 				}
 			
@@ -1067,7 +1067,7 @@ public class HostPopulation {
 		for (int i = 0; i < recoveries; i++) {
 			if (getI()>0) {
 				int index = getRandomI();
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				h.clearInfection();
 				removeInfected(index);
 				if (Parameters.transcendental) {
@@ -1094,7 +1094,7 @@ public class HostPopulation {
                                 //while (newInfections.contains(infecteds.get(index))) {
                                   //  index = getRandomI();
                                 //}
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				h.clearInfection();
 				removeInfected(index);
 				if (Parameters.transcendental) {
@@ -1130,7 +1130,7 @@ public class HostPopulation {
                                 
                                 int randomInK = (int) Math.floor(Math.random() * infectionsByClass.get(k).size());
                                 Host h = infectionsByClass.get(k).get(randomInK);
-                                int indexInInfecteds = infecteds.indexOf(h);
+                                int indexInInfecteds = getInfecteds().indexOf(h);
 				h.clearInfection();
                                 infectionsByClass.get(k).remove(randomInK);
 				removeInfected(indexInInfecteds);
@@ -1171,7 +1171,7 @@ public class HostPopulation {
 		for (int i = 0; i < mutations; i++) {
 			if (getI()>0) {
 				int index = getRandomI();
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				h.mutate();
 			}
 		}			
@@ -1190,7 +1190,7 @@ public class HostPopulation {
 			int samples = Random.nextPoisson(totalSamplingRate);
 			for (int i = 0; i < samples; i++) {
 				int index = getRandomI();
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				Virus v = h.getInfection();
 				VirusTree.add(v);
 			}	
@@ -1201,7 +1201,7 @@ public class HostPopulation {
 	public void makeTrunk() {
 		for (int i = 0; i < getI(); i++) {
                         //int i = getRandomI();
-			Host h = infecteds.get(i);
+			Host h = getInfecteds().get(i);
 			Virus v = h.getInfection();
 			v.makeTrunk();
 			while (v.getParent() != null) {
@@ -1282,7 +1282,7 @@ public class HostPopulation {
 	
 		// clearing lists
 		susceptibles.clear();
-		infecteds.clear();
+		getInfecteds().clear();
 		recovereds.clear();
 		
 		int initialR = 0;
@@ -1309,7 +1309,7 @@ public class HostPopulation {
 			for (int i = 0; i < 3*Parameters.initialI; i++) {
 				Virus v = new Virus(Parameters.urVirus, deme);
 				Host h = new Host(v);
-				infecteds.add(h);
+				getInfecteds().add(h);
 			}	
 		
 		}
@@ -1330,7 +1330,7 @@ public class HostPopulation {
 		
 		// step through infecteds and print
 		for (int i = 0; i < getI(); i++) {
-			Host h = infecteds.get(i);
+			Host h = getInfecteds().get(i);
 			stream.print(deme + ":");
 			h.printInfection(stream);
 			stream.print(":");
@@ -1454,7 +1454,7 @@ public class HostPopulation {
                                 
                                 int randomInK = (int) Math.floor(Math.random() * infectionsByClass.get(k).size());
                                 Host h = infectionsByClass.get(k).get(randomInK);
-                                int indexInInfecteds = infecteds.indexOf(h);
+                                int indexInInfecteds = getInfecteds().indexOf(h);
 				h.clearInfection();
                                 infectionsByClass.get(k).remove(randomInK);
 				removeInfected(indexInInfecteds);
@@ -1482,7 +1482,7 @@ public class HostPopulation {
                                 //while (newInfections.contains(infecteds.get(index))) {
                                     //index = getRandomI();
                                 //}
-				Host h = infecteds.get(index);
+				Host h = getInfecteds().get(index);
 				h.clearInfection();
 				removeInfected(index);
 				if (Parameters.transcendental) {
@@ -1532,7 +1532,7 @@ public class HostPopulation {
             }
             
             for (int index = 0; index < getI(); index++) {
-                Host iH = infecteds.get(index);
+                Host iH = getInfecteds().get(index);
                 ArrayList<Integer> hArray = iH.getHistoryArray();
                 if (hArray.size() > 1) {
                     HashSet<Integer> retain = new HashSet<Integer>();
@@ -1608,7 +1608,7 @@ public class HostPopulation {
                     sH.removeFromHistory(removeList);
                 }
                 for (int index = 0; index < getI(); index++) {
-                    Host iH = infecteds.get(index);
+                    Host iH = getInfecteds().get(index);
                     iH.removeFromHistory(removeList);
                 }
                 //Have to clean up history for recoverds too if transcendental immunity
@@ -1617,5 +1617,13 @@ public class HostPopulation {
             System.out.println("Removed " + removed + " from population's antigenic history");
             //System.out.println(removeList);
         }
+
+		public List<Host> getInfecteds() {
+			return infecteds;
+		}
+
+		public void setInfecteds(List<Host> infecteds) {
+			this.infecteds = infecteds;
+		}
 				
 }
