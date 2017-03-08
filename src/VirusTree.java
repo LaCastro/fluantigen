@@ -8,10 +8,10 @@ import cern.colt.list.DoubleArrayList;
 public class VirusTree {
 
 	// fields
-	private static Virus root = Parameters.urVirus;	
-	private static List<Virus> tips = new ArrayList<Virus>();
+	public static Virus root = Parameters.urVirus;	// editing to make public
+	public static List<Virus> tips = new ArrayList<Virus>(); // editing to make public
         
-        private static ArrayList<Virus> samples;
+    public static ArrayList<Virus> samples; //making public
 	
 	public static double xMin;
 	public static double xMax;
@@ -135,7 +135,7 @@ public class VirusTree {
 		for (double i = 0; i < Parameters.getDate(); i+=0.1) {
 			Virus v = getRandomTipFromTo(i,i+0.1);
 			if (v != null) {
-				while (v.getParent() != null) {
+  				while (v.getParent() != null) {
 					v.mark();
 					v = v.getParent();
 				}
@@ -147,6 +147,7 @@ public class VirusTree {
 	// prune tips
 	public static void pruneTips() {
 		List<Virus> reducedTips = new ArrayList<Virus>();
+		System.out.println("Tree originally had " + tips.size() + " tips");
 		for (int d = 0; d < Parameters.demeCount; d++) {
 			
 			double keepProportion = (double) Parameters.tipSamplesPerDeme / (double) getDemeCount(d);
