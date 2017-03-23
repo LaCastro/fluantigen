@@ -29,7 +29,7 @@ printFitSamplesStep: 1000                   # print out viral fitness samples ev
                                             # metapopulation parameters
 demeCount: 1                                # number of demes
 demeNames: ["tropics"]                      # deme names
-initialNs: [4000000]                           # inital deme population sizes (40000000)
+initialNs: [40000]                           # inital deme population sizes (40000000)
     
                                             # host parameters   
 birthRate: 0.000091                         # in births per individual per day, 1/30 years = 0.000091

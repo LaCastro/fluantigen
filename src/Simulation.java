@@ -2,6 +2,7 @@
 
 import java.util.*;
 import java.io.*;
+import java.text.SimpleDateFormat;
 
 //import com.javamex.classmexer.*;
 import com.javamex.classmexer.*;
@@ -581,8 +582,18 @@ public class Simulation {
 	public void run() {
 	
 		try {
+			Date now = new Date();
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyy-mm-dd hh:mm:ss");
+			String time = dateFormat.format(now);
+			File dir = new File(time);
+			dir.mkdir();
+			
 			System.out.println("Starting Simulation");
-			File seriesFile = new File("out.timeseries.txt");	// changed to a text file	
+			time = time.concat("/out.timeseries.txt");
+			
+			File seriesFile = new File(time);	// changed to a text file	
+			
+			//File seriesFile = new File("out.timeseries.txt");	// changed to a text file	
 			seriesFile.delete();
 			seriesFile.createNewFile();
 			PrintStream seriesStream = new PrintStream(seriesFile);
