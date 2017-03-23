@@ -29,7 +29,7 @@ printFitSamplesStep: 1000                   # print out viral fitness samples ev
                                             # metapopulation parameters
 demeCount: 1                                # number of demes
 demeNames: ["tropics"]                      # deme names
-initialNs: [40000]                           # inital deme population sizes (40000000)
+initialNs: [4000000]                           # inital deme population sizes (40000000)
     
                                             # host parameters   
 birthRate: 0.000091                         # in births per individual per day, 1/30 years = 0.000091
@@ -37,7 +37,7 @@ deathRate: 0.000091                         # in deaths per individual per day, 
 swapDemography: true                        # whether to keep overall population size constant
 
                                             # epidemiological parameters    
-initialI: 74                               # in individuals (7406)
+initialI: 740                               # in individuals (7406)
 initialDeme: 1                              # index of deme where infection starts, 1..n
 initialPrR: 0.5088                           # proportion with prior immunity to initial strain (.5088)
 beta: 0.5627                                  # in contacts per individual per day

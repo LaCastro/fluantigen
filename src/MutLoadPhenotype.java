@@ -150,7 +150,7 @@ public class MutLoadPhenotype implements Phenotype {
                     }
                 }
                 
-                Phenotype mutP = new MutLoadPhenotype(newLoad, lethality, type);
+                Phenotype mutP = new MutLoadPhenotype(newLoad, lethality, type); //when it becomes the new type 
                 
 		return mutP;
 				

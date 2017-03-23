@@ -171,7 +171,7 @@ public class Simulation {
             return mean;
         }
         
-        public int getAnitgenicTypes() {
+        public int getAntigenicTypesCount() {
             HostPopulation hp = demes.get(0);
             int types = hp.getAntigenicCount();
             return types;
@@ -194,6 +194,8 @@ public class Simulation {
             }
             return typeList;
         }
+        
+       
         
         public int getCumlAntigenicTypes() {
             //int cumlTypes = AntigenicTree.nodeCount();
@@ -283,7 +285,9 @@ public class Simulation {
 	
 	public void printState() {
                 
-		System.out.printf("%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d\n", Parameters.day, getDiversity(), getTmrca(),  getNetau(), getSerialInterval(), getAntigenicDiversity(), getN(), getS(), getI(), getR(), getCases(), getMeanLoad(), getAnitgenicTypes(), getCumlAntigenicTypes());
+		System.out.printf("%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d\n", 
+				Parameters.day, getDiversity(), getTmrca(),  getNetau(), getSerialInterval(), getAntigenicDiversity(), 
+				getN(), getS(), getI(), getR(), getCases(), getMeanLoad(), getAntigenicTypesCount(), getCumlAntigenicTypes());
 		
 		if (Parameters.memoryProfiling && Parameters.day % 100 == 0) {
 			long noBytes = 0;
@@ -350,16 +354,19 @@ public class Simulation {
 	}
         
         public void printFrequencies(PrintStream stream, ArrayList<Double> currentFrequencies, ArrayList<Integer> typeList) {
+        	// want to put current infected count here 
+        	int infected = this.getI();
         	for (int i = 0; i < currentFrequencies.size(); i++) {
-        		stream.printf("%.4f\t%d\t%d\t%.6f", Parameters.getDate(), Parameters.day,typeList.get(i), currentFrequencies.get(i)); 
+        		stream.printf("%.4f\t%d\t%d\t%.6f\t%d", Parameters.getDate(), Parameters.day,typeList.get(i), currentFrequencies.get(i), infected ); 
             	stream.println();
         		}
         	}
        	
       
         public void printTrackAntigens(PrintStream stream) {
-    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d\n", Parameters.getDate(), getDiversity(), getTmrca(), 
-    					getNetau(), getSerialInterval(), getAntigenicDiversity(), getN(), getS(), getI(), getR(), getCases(), getMeanLoad(),getAnitgenicTypes(), getCumlAntigenicTypes());
+    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d", 
+    				Parameters.getDate(), getDiversity(), getTmrca(), getNetau(), getSerialInterval(), getAntigenicDiversity(), 
+    					getN(), getS(), getI(), getR(), getCases(), getMeanLoad(), getAntigenicTypesCount(),getCumlAntigenicTypes());
     		stream.println();
     	}
           
@@ -411,7 +418,7 @@ public class Simulation {
     	}
         
         public void printTrackFrequenciesHeader(PrintStream stream) {
-        	stream.print("simTime\tday\tantigentype\tfrequency");
+        	stream.print("simTime\tday\tantigentype\tfrequency\tinfected");
         	stream.println();
         }
         
