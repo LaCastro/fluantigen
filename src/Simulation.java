@@ -584,14 +584,16 @@ public class Simulation {
 	public void run() {
 	
 		try {
+		    
 			Date now = new Date();
-			SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm");
+			SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm-ss");
 			String timeFormat = dateFormat.format(now);
 			time = timeFormat;
 			File dir = new File(time);
 			dir.mkdir();
 			
-			System.out.println("Starting Simulation");
+			System.setOut(new PrintStream(new FileOutputStream(time.concat("/out.console.txt"))));
+			
 			String timeseriesName = time.concat("/out.timeseries.txt");
 			
 			File seriesFile = new File(timeseriesName);	// changed to a text file	
@@ -710,13 +712,13 @@ public class Simulation {
 		VirusTree.fillBackward();                                       // assign parents children			
 		VirusTree.sortChildrenByDescendants();                          // sort children by number of descendents
 		VirusTree.setLayoutByDescendants();
-		VirusTree.getMRCASeries(daysList, time);                              // prints out time of MRCA in tree over time
+		VirusTree.getMRCASeries(daysList, time);                        // prints out time of MRCA in tree over time
 		VirusTree.streamline();                                         // collapses nodes with single descentdent in tree			
 
 
 		// reconstruct dynamics of antigenic types in tree
 		VirusTree.getTreeTypes();                                       // get all antigenic types in tree (including internals)
-		VirusTree.reconstructAntDynamics(daysList);                     // reconstruct the population dynamics of all antigenic types in tree
+		VirusTree.reconstructAntDynamics(daysList, time);               // reconstruct the population dynamics of all antigenic types in tree
 		printAntigenicDistances(VirusTree.treeTypes);                   // print antigenic distance matrix for antigenic types in tree
                 
 		// rotation

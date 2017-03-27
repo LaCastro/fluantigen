@@ -419,7 +419,7 @@ public class VirusTree {
             return trunkParent;
         }
         
-        public static void reconstructAntDynamics(ArrayList<Double> dates) {
+        public static void reconstructAntDynamics(ArrayList<Double> dates, String time) {
             
             double timeIncrement = dates.get(dates.size()-1) - dates.get(dates.size()-2);
             
@@ -451,7 +451,8 @@ public class VirusTree {
             }
             
             try {
-                File seriesFile = new File("out.antigenicSamples.txt");		
+            	String distFileName = time.concat("/out.antigenicSamples.txt");
+                File seriesFile = new File(distFileName);		
                 seriesFile.delete();
                 seriesFile.createNewFile();
                 PrintStream stream = new PrintStream(seriesFile);    
