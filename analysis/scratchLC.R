@@ -10,6 +10,7 @@ library(scales)
 analysis.dir <- "../03-27-2017_09-26/"
 
 timeseries <- read.table("../03-27-2017_09-26/out.timeseries.txt", header = TRUE)
+hundred.thousand <- read.table("../03-27-2017_01-55/out.timeseries.txt", header = TRUE)
 
 fancy_scientific <- function(l) {
   # turn in to character string in scientific notation
@@ -30,7 +31,7 @@ timeseries %>% select(date, totalS, totalI) %>%
   scale_y_continuous(labels = fancy_scientific) +
   labs(x = "Date (years)", y = "Individuals")
 
-timeseries %>% select(date, totalS, totalI, diversity) %>%
+hundred.thousand %>% select(date, totalS, totalI, diversity) %>%
   gather(key = variable, value = value, -date) %>%
   ggplot(aes(x = date, y = value)) + geom_line()+
   facet_wrap(~variable, scales = "free_y") +
