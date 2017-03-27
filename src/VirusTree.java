@@ -166,7 +166,7 @@ public class VirusTree {
                 
 	}
         
-        public static void getMRCASeries(ArrayList<Double> dates) {
+        public static void getMRCASeries(ArrayList<Double> dates, String time) {
             
             ArrayList<Virus> activeLineages = new ArrayList<Virus>();
             ArrayList<Virus> sampleQueue = new ArrayList<Virus>();
@@ -233,7 +233,8 @@ public class VirusTree {
             
             Collections.reverse(mrcaList);
             try {
-                File distFile = new File("out.mrcaSeries");		
+            	String distFileName = time.concat("/out.mrcaSeries");
+                File distFile = new File(distFileName);		
                 distFile.delete();
                 distFile.createNewFile();
                 PrintStream stream = new PrintStream(distFile);
@@ -280,7 +281,7 @@ public class VirusTree {
             return treeTypes;
         }
         
-        public static void printTrunkAntigenicShifts() {
+        public static void printTrunkAntigenicShifts(String time) {
             
             //ArrayList<Double> shiftSizes = new ArrayList<Double>();
             //ArrayList<Virus> tipsCopy = new ArrayList<Virus>();
@@ -301,7 +302,8 @@ public class VirusTree {
         System.out.println();
             
             try {
-                File distFile = new File("out.trunkAntigenicShifts");		
+            	String shiftsFileName = time.concat("/out.trunkAntigenicShifts");
+                File distFile = new File(shiftsFileName);		
                 distFile.delete();
                 distFile.createNewFile();
                 PrintStream stream = new PrintStream(distFile);
@@ -1016,10 +1018,11 @@ public class VirusTree {
 		
 	}
 	
-	public static void printTips() {
+	public static void printTips(String time) {
 		
 		try {
-			File tipFile = new File("out.tips.txt");
+			String tipFileName = time.concat("/out.tips.txt");
+			File tipFile = new File(tipFileName);
 			tipFile.delete();
 			tipFile.createNewFile();
 			PrintStream tipStream = new PrintStream(tipFile);
@@ -1036,10 +1039,11 @@ public class VirusTree {
 		
 	}
 	
-	public static void printBranches() {
+	public static void printBranches(String time) {
 		
 		try {
-			File branchFile = new File("out.branches");
+			String branchFileName = time.concat("/out.branches.txt");
+			File branchFile = new File(branchFileName);
 			branchFile.delete();
 			branchFile.createNewFile();
 			PrintStream branchStream = new PrintStream(branchFile);
@@ -1680,10 +1684,11 @@ public class VirusTree {
 	
 	}
 	
-	public static void printNewick() {
+	public static void printNewick(String time) {
 	
 		try {
-			File treeFile = new File("out.trees");
+			String treeFileName = time.concat("/out.trees.txt");
+			File treeFile = new File(treeFileName);
 			treeFile.delete();
 			treeFile.createNewFile();
 			PrintStream treeStream = new PrintStream(treeFile);
@@ -1710,10 +1715,11 @@ public class VirusTree {
 	
 	}
         
-        public static void printSimMapLoad() {
+        public static void printSimMapLoad(String time) {
 	
 		try {
-			File treeFile = new File("out.simmapLoad");
+			String simmapFileName = time.concat("/out.simmapLoad.txt");
+			File treeFile = new File(simmapFileName);
 			treeFile.delete();
 			treeFile.createNewFile();
 			PrintStream treeStream = new PrintStream(treeFile);
@@ -1740,10 +1746,11 @@ public class VirusTree {
 	
 	}
         
-        public static void printSimMapAntigenic() {
+        public static void printSimMapAntigenic(String time) {
 	
 		try {
-			File treeFile = new File("out.simmapAntigenic");
+			String simmapAntigenicFileName = time.concat("/out.simmapAntigenic.txt");
+			File treeFile = new File(simmapAntigenicFileName);
 			treeFile.delete();
 			treeFile.createNewFile();
 			PrintStream treeStream = new PrintStream(treeFile);

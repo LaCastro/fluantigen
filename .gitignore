@@ -11,5 +11,6 @@
 #outfiles
 
 out.*
+*.jpeg
 
 .Rproj.user

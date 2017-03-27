@@ -10,6 +10,7 @@ import com.javamex.classmexer.*;
 public class Simulation {
 
 	// fields
+	private String time;
 	private List<HostPopulation> demes = new ArrayList<HostPopulation>();
 	private double diversity;
 	private double tmrca;
@@ -39,6 +40,7 @@ public class Simulation {
         private double meanSigmaDist;
         private double varSigmaDist;
         private double covBetaSigmaDist;
+
 	
 	// constructor
 	public Simulation() {
@@ -372,11 +374,10 @@ public class Simulation {
     	}
           
    
-        public void printFitnessSamples() {
+        public void printFitnessSamples(String time) {
             
                 try {
-                    
-                    String fileName = "out.fitnessSamples_t" + Double.toString(Parameters.day);
+                    String fileName = time + "/out.fitnessSamples_t" + Double.toString(Parameters.day);
                     File samplesFile = new File(fileName);
                     samplesFile.delete();
                     samplesFile.createNewFile();
@@ -424,17 +425,18 @@ public class Simulation {
         }
         
         public void printAntigenicDistances(ArrayList<Integer> types) {
-                AntigenicTree.printDistanceMatrix(types);
+                AntigenicTree.printDistanceMatrix(types, time);
         }
         
         public void printAntigenicDistancesBetweenTips() {
-                AntigenicTree.printDistanceMatrixBetweenTips();
+                AntigenicTree.printDistanceMatrixBetweenTips(time);
         }
 	
-	public void printSummary() {
+	public void printSummary(String time) {
 	
 		try {
-			File summaryFile = new File("out.summary");
+			String summaryName = time.concat("/out.summary.txt");
+			File summaryFile = new File(summaryName);
 			summaryFile.delete();
 			summaryFile.createNewFile();
 			PrintStream summaryStream = new PrintStream(summaryFile);
@@ -583,15 +585,16 @@ public class Simulation {
 	
 		try {
 			Date now = new Date();
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyy-mm-dd hh:mm:ss");
-			String time = dateFormat.format(now);
+			SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm");
+			String timeFormat = dateFormat.format(now);
+			time = timeFormat;
 			File dir = new File(time);
 			dir.mkdir();
 			
 			System.out.println("Starting Simulation");
-			time = time.concat("/out.timeseries.txt");
+			String timeseriesName = time.concat("/out.timeseries.txt");
 			
-			File seriesFile = new File(time);	// changed to a text file	
+			File seriesFile = new File(timeseriesName);	// changed to a text file	
 			
 			//File seriesFile = new File("out.timeseries.txt");	// changed to a text file	
 			seriesFile.delete();
@@ -600,32 +603,35 @@ public class Simulation {
 			System.out.println("day\tsimDay\toriAntigenType\tdistance"); // console output for antigenic mutations
 			printHeader(seriesStream);
                         
-                        File mutationFile = new File("out.mutationSeries.txt");// changed to a text file
-                        mutationFile.delete();
-                        mutationFile.createNewFile();
-                        PrintStream mutationStream = new PrintStream(mutationFile);
+			String mutationSeriesName = time.concat("/out.mutationSeries.txt");
+            File mutationFile = new File(mutationSeriesName);// changed to a text file
+            mutationFile.delete();
+            mutationFile.createNewFile();
+            PrintStream mutationStream = new PrintStream(mutationFile);
 			
-                        File fitnessFile = new File("out.viralFitnessSeries.txt"); // changed to a text file
-                        fitnessFile.delete();
-                        fitnessFile.createNewFile();
-                        PrintStream fitnessStream = new PrintStream(fitnessFile);
-                        printFitnessHeader(fitnessStream);
+            String viralFitnessName = time.concat("/out.viralFitnessSeries.txt");
+            File fitnessFile = new File(viralFitnessName); // changed to a text file
+            fitnessFile.delete();
+            fitnessFile.createNewFile();
+            PrintStream fitnessStream = new PrintStream(fitnessFile);
+            printFitnessHeader(fitnessStream);
                         
-                        // Lauren adding to keep track of when antigenic mutations occur 
-                        File trackAntigenFile = new File("out.trackAntigenSeries.txt");
-                        trackAntigenFile.delete();
-                        trackAntigenFile.createNewFile();
-                        PrintStream trackAntigenStream = new PrintStream(trackAntigenFile);
-                        printTrackAntigenHeader(trackAntigenStream);
-                        
-                        //TO DO - Change the output 
-                        
-                        
-                        File trackFrequenciesFile = new File("out.antigenFrequencies.txt");
-                        trackFrequenciesFile.delete();
-                        trackFrequenciesFile.createNewFile();
-                        PrintStream trackFrequenciesStream = new PrintStream(trackFrequenciesFile);
-                        printTrackFrequenciesHeader(trackFrequenciesStream);
+            // Lauren adding to keep track of when antigenic mutations occur 
+
+            String antigenSeriesName = time.concat("/out.trackAntigenSeries.txt");
+            File trackAntigenFile = new File(antigenSeriesName);
+            trackAntigenFile.delete();
+            trackAntigenFile.createNewFile();
+            PrintStream trackAntigenStream = new PrintStream(trackAntigenFile);
+            printTrackAntigenHeader(trackAntigenStream);
+
+            //TO DO - Change the output 
+            String antigenFrequenciesName = time.concat("/out.antigenFrequencies.txt");
+            File trackFrequenciesFile = new File(antigenFrequenciesName);
+            trackFrequenciesFile.delete();
+            trackFrequenciesFile.createNewFile();
+            PrintStream trackFrequenciesStream = new PrintStream(trackFrequenciesFile);
+            printTrackFrequenciesHeader(trackFrequenciesStream);
                         
 			for (int i = 0; i < Parameters.endDay; i++) {
 				
@@ -643,7 +649,7 @@ public class Simulation {
         			Parameters.novelAntigen = false;
                 }
                 /* Here I want to be able to UpdateDiversity, UpdateFitnessDists
-                 * Print out printTrackAntigens(trackAntigenStream)
+                 * Print out printTrackAntigens(trackAntigenStream) I think this is taken care of 
                  */
 				
 				if (Parameters.day % Parameters.printStep == 0) {
@@ -666,7 +672,7 @@ public class Simulation {
                                 
                                 if (Parameters.day % Parameters.printFitSamplesStep == 0) {
                                     // Print list of randomly sampled virus's beta, S/N and R values
-                                    printFitnessSamples();
+                                    printFitnessSamples(time);
                                 }
 				
 				if (getI()==0) {
@@ -691,26 +697,27 @@ public class Simulation {
 			System.exit(0);
 		}	
 		
+		
 		// Summary
-		printSummary();
-					
+		printSummary(time);
+
 		// tree reduction
 		VirusTree.pruneTips();
 		VirusTree.markTips();		
-	
+
 		// tree prep
 		makeTrunk();
 		VirusTree.fillBackward();                                       // assign parents children			
 		VirusTree.sortChildrenByDescendants();                          // sort children by number of descendents
 		VirusTree.setLayoutByDescendants();
-		VirusTree.getMRCASeries(daysList);                              // prints out time of MRCA in tree over time
-                VirusTree.streamline();                                         // collapses nodes with single descentdent in tree			
-		
-                
-                // reconstruct dynamics of antigenic types in tree
-                VirusTree.getTreeTypes();                                       // get all antigenic types in tree (including internals)
-                VirusTree.reconstructAntDynamics(daysList);                     // reconstruct the population dynamics of all antigenic types in tree
-                printAntigenicDistances(VirusTree.treeTypes);                   // print antigenic distance matrix for antigenic types in tree
+		VirusTree.getMRCASeries(daysList, time);                              // prints out time of MRCA in tree over time
+		VirusTree.streamline();                                         // collapses nodes with single descentdent in tree			
+
+
+		// reconstruct dynamics of antigenic types in tree
+		VirusTree.getTreeTypes();                                       // get all antigenic types in tree (including internals)
+		VirusTree.reconstructAntDynamics(daysList);                     // reconstruct the population dynamics of all antigenic types in tree
+		printAntigenicDistances(VirusTree.treeTypes);                   // print antigenic distance matrix for antigenic types in tree
                 
 		// rotation
 		if (Parameters.pcaSamples) {
@@ -719,20 +726,19 @@ public class Simulation {
 		}
 		
 		// tip and tree output
-		VirusTree.printTips();			
-		VirusTree.printBranches();	
-                VirusTree.printNewick();                                        // Print basic newick tree
-                VirusTree.printSimMapLoad();                                    // Print SimMap tree with annotation for mutation load along lineages
-                //VirusTree.printSimMapClades();
-                VirusTree.printSimMapAntigenic();                               // Print SimMap tree with annotation for antigenic type along lineages
-		
-                VirusTree.printTrunkAntigenicShifts();                          // Print size of all antigenic transitions along trunk
+		VirusTree.printTips(time);			
+		VirusTree.printBranches(time);	
+		VirusTree.printNewick(time);                                        // Print basic newick tree
+		VirusTree.printSimMapLoad(time);                                    // Print SimMap tree with annotation for mutation load along lineages
+		//VirusTree.printSimMapClades();
+		VirusTree.printSimMapAntigenic(time);                               // Print SimMap tree with annotation for antigenic type along lineages
+		VirusTree.printTrunkAntigenicShifts(time);                          // Print size of all antigenic transitions along trunk
                 
                 
                 // Trevor's stuff:
                 
 		// mk output
-		VirusTree.printMK();
+		//VirusTree.printMK();
 		
 		// immunity output
 		if (Parameters.phenotypeSpace == "geometric") {

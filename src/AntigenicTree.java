@@ -140,7 +140,7 @@ public class AntigenicTree {
             return distance;
         }
         
-        public static void printDistanceMatrix(ArrayList<Integer> types) {
+        public static void printDistanceMatrix(ArrayList<Integer> types, String time) {
             
             int nt = types.size();
             DoubleMatrix2D subMatrix = factory2D.make(nt,nt);
@@ -156,7 +156,8 @@ public class AntigenicTree {
             }
             
             try {
-                File distFile = new File("out.antigenicDistances");		
+            	String distFileName = time.concat("/out.antigenicDistances");
+                File distFile = new File(distFileName);		
                 distFile.delete();
                 distFile.createNewFile();
                 PrintStream stream = new PrintStream(distFile);
@@ -178,7 +179,7 @@ public class AntigenicTree {
             
         }
         
-        public static void printDistanceMatrixBetweenTips() {
+        public static void printDistanceMatrixBetweenTips(String time) {
             
             List<Virus> tips = VirusTree.getTips();
             int nt = tips.size();
@@ -195,7 +196,8 @@ public class AntigenicTree {
             }
             
             try {
-                File distFile = new File("out.antigenicDistances");		
+            	String distFileName = time.concat("/out.antigenicDistances");
+                File distFile = new File(distFileName);		
                 distFile.delete();
                 distFile.createNewFile();
                 PrintStream stream = new PrintStream(distFile);
