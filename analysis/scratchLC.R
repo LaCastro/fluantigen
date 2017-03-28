@@ -4,13 +4,64 @@ library(tidyverse)
 library(ggplot2)
 library(cowplot)
 library(scales)
-
+library(reshape2)
+library(data.table)
+library(RColorBrewer)
 
 ### Timeseries
-analysis.dir <- "../03-27-2017_09-26/"
+analysis.dir <- "~/Dropbox/Projects/mutantigen/"
+variation.list = list.dirs(analysis.dir, full.names = TRUE, recursive = FALSE)
 
-timeseries <- read.table("../03-27-2017_09-26/out.timeseries.txt", header = TRUE)
-hundred.thousand <- read.table("../03-27-2017_01-55/out.timeseries.txt", header = TRUE)
+all.antigen <- lapply(variation.list, function(.file) {
+  file.list = list.files(.file)
+  out.timeseries <- read.table(paste0(.file,"/out.trackAntigenSeries.txt"), header = TRUE)
+  out.timeseries
+})
+
+
+variation.timeseries = rbindlist(all.timeseries, idcol = TRUE)
+variation.timeseries$.id = as.factor(variation.timeseries$.id)
+
+myColors <- colorRampPalette(brewer.pal(8, "Dark2"))(10)
+
+variation.timeseries %>% 
+  ggplot(aes(x = date, y = diversity, group = .id, col = .id)) + 
+  geom_line(alpha = .5) + guides(col = FALSE) +
+  scale_color_manual(values = myColors)
+
+
+variation.timeseries %>% 
+  ggplot(aes(x = date, y = diversity)) +
+  facet_wrap(~.id) + geom_line(alpha = .5) 
+
+
+
+variation.frequencies = rbindlist(all.frequencies, idcol = TRUE)
+variation.frequencies$.id = as.factor(variation.frequencies$.id)
+
+### Visualzing the frequency of the wildtype
+
+variation.frequencies %>%
+  filter(antigentype == 0) %>%
+  ggplot(aes(x = simTime, y = frequency)) + geom_area() +
+  facet_wrap(~.id) + 
+  geom_area(color  = "black", fill = "purple", alpha = .5) +
+  guides(fill = FALSE) -> wild.type.frequency
+
+
+variation.fitness  = rbindlist(all.fitness, idcol = TRUE)
+variation.fitness$.id = as.factor(variation.fitness$.id)
+
+
+variation.antigen = rbindlist(all.antigen, idcol = TRUE)
+variation.antigen$.id = as.factor(variation.antigen$.id)
+
+variation.antigen %>%
+  gather(key = metric, value = value, -day, -.id) %>%
+  filter((metric != "R") & (metric != "N")) %>%
+  ggplot(aes(x = day, y = value, group = .id, col = .id)) + geom_line() +
+  facet_wrap(~metric, scales = "free_y") + guides(color = FALSE)
+
 
 fancy_scientific <- function(l) {
   # turn in to character string in scientific notation
@@ -24,19 +75,46 @@ fancy_scientific <- function(l) {
 }
 
 
-timeseries %>% select(date, totalS, totalI) %>%
-  gather(key = state, value = value, -date) %>%
-  ggplot(aes(x = date, y = value)) + geom_line()+
-  facet_wrap(~state, scales = "free_y") +
-  scale_y_continuous(labels = fancy_scientific) +
-  labs(x = "Date (years)", y = "Individuals")
+##### Population
+analysis.dir <- "~/Dropbox/Projects/mutantigen/population_test/"
+population.list = list.dirs(analysis.dir, full.names = FALSE, recursive = FALSE)
 
-hundred.thousand %>% select(date, totalS, totalI, diversity) %>%
-  gather(key = variable, value = value, -date) %>%
-  ggplot(aes(x = date, y = value)) + geom_line()+
-  facet_wrap(~variable, scales = "free_y") +
-  scale_y_continuous(labels = fancy_scientific) +
-  labs(x = "Date (years)", y = "Value")
+population.timeseries <- lapply(population.list, function(.file) {
+  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.timeseries.txt"), header = TRUE)
+  out.timeseries
+})
+
+names(population.timeseries) = population.list
+population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
+
+population.timeseries %>% 
+  ggplot(aes(x = date, y = totalI)) + geom_line()+
+  facet_wrap(~.id, scales = "free_y")
+
+
+################# Antigen Series
+population.antigenFrequencies <- lapply(population.list, function(.file) {
+  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.antigenFrequencies.txt"), header = TRUE)
+  out.timeseries
+})
+
+names(population.antigenFrequencies) = population.list
+population.antigenFrequencies = rbindlist(population.antigenFrequencies, idcol = TRUE)
+
+population.antigenseries %>% 
+  ggplot(aes(x = day, y = cumulativeTypes)) + geom_line()+
+  facet_wrap(~.id, scales = "free_y")
+
+population.antigenFrequencies$antigentype = as.factor(population.antigenFrequencies$antigentype)
+
+population.antigenFrequencies %>% 
+  filter(.id == "ten_sixth") %>%
+  ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
+  geom_line() + guides(col = FALSE)
+  
+
+
+head(population.antigenseries)
 
 
 ####### Antigenic Change
@@ -93,22 +171,10 @@ out_antigenFrequencies %>%
 save_plot(filename = "ci.frequency.pdf", ci.frequency)
 
 
+############ Library phylotate
+tree_sixth <- read_annotated(filename = paste0(analysis.dir,"/ten_sixth/out.trees.txt"), format = "newick")
+tree_third <- read_annotated(filename = paste0(analysis.dir,"/ten_third/out.trees.txt"), format = "newick")
+tree_fourth <- read_annotated(filename = paste0(analysis.dir,"/ten_fourth/out.trees.txt"), format = "newick")
+tree_fifth <- read_annotated(filename = paste0(analysis.dir,"/ten_fifth/out.trees.txt"), format = "newick")
 
-
-antigen_series %>% 
-  gather(key = variable, value = value, -day) %>%
-  ggplot(aes(x = day, y = value)) + geom_line() + 
-  facet_wrap(~variable, scales = "free_y") -> summary.plot
-save_plot(filename = "summary.plot.pdf", summary.plot, base_height = 8, base_aspect_ratio = 1.5)
-
-
-
-#### Variance
-out_viralFitnessSeries <- read_delim("~/Documents/projects/fluantigen/03-27-2017_09-26/out.viralFitnessSeries.txt", 
-                                     "\t", escape_double = FALSE, trim_ws = TRUE)
-
-out_viralFitnessSeries %>% 
-  gather(key = variable, value = value, -date) %>%
-  ggplot(aes(x = date, y = value)) + geom_line() + 
-  facet_wrap(~variable, scales = "free_y") -> viralFitnessSeries
-save_plot(filename = "summary.plot.pdf", summary.plot, base_height = 8, base_aspect_ratio = 1.5)
+plot(tree_sixth, show.tip.label = FALSE)
