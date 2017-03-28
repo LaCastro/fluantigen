@@ -9,15 +9,18 @@ library(data.table)
 library(RColorBrewer)
 
 ### Timeseries
-analysis.dir <- "~/Dropbox/Projects/mutantigen/"
+analysis.dir <- "~/Dropbox/Projects/mutantigen/variation"
 variation.list = list.dirs(analysis.dir, full.names = TRUE, recursive = FALSE)
 
-all.antigen <- lapply(variation.list, function(.file) {
+
+variation.list
+
+
+ <- lapply(variation.list, function(.file) {
   file.list = list.files(.file)
   out.timeseries <- read.table(paste0(.file,"/out.trackAntigenSeries.txt"), header = TRUE)
   out.timeseries
 })
-
 
 variation.timeseries = rbindlist(all.timeseries, idcol = TRUE)
 variation.timeseries$.id = as.factor(variation.timeseries$.id)
@@ -53,7 +56,8 @@ variation.fitness  = rbindlist(all.fitness, idcol = TRUE)
 variation.fitness$.id = as.factor(variation.fitness$.id)
 
 
-variation.antigen = rbindlist(all.antigen, idcol = TRUE)
+variation.antigen = rbindlist(
+  , idcol = TRUE)
 variation.antigen$.id = as.factor(variation.antigen$.id)
 
 variation.antigen %>%
@@ -84,6 +88,8 @@ population.timeseries <- lapply(population.list, function(.file) {
   out.timeseries
 })
 
+
+
 names(population.timeseries) = population.list
 population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
 
@@ -93,28 +99,63 @@ population.timeseries %>%
 
 
 ################# Antigen Series
-population.antigenFrequencies <- lapply(population.list, function(.file) {
-  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.antigenFrequencies.txt"), header = TRUE)
+
+
+population.timeseries <- lapply(population.list, function(.file) {
+  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.timeseries.txt"), header = TRUE)
   out.timeseries
 })
 
-names(population.antigenFrequencies) = population.list
-population.antigenFrequencies = rbindlist(population.antigenFrequencies, idcol = TRUE)
+names(population.timeseries) = population.list
+population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
 
-population.antigenseries %>% 
-  ggplot(aes(x = day, y = cumulativeTypes)) + geom_line()+
-  facet_wrap(~.id, scales = "free_y")
+#population.timeseries %>% 
+#  ggplot(aes(x = day, y = cumulativeTypes)) + geom_line()+
+#  facet_wrap(~.id, scales = "free_y")
 
 population.antigenFrequencies$antigentype = as.factor(population.antigenFrequencies$antigentype)
+
+
+population.antigenFrequencies %>%
+  filter(.id == "ten_sixth") %>%
+  group_by(antigentype) %>%
+  summarize(max.freq = max(frequency)) 
+  
+myColors <- colorRampPalette(brewer.pal(8, "Accent"))(3321)
 
 population.antigenFrequencies %>% 
   filter(.id == "ten_sixth") %>%
   ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
-  geom_line() + guides(col = FALSE)
+  geom_line() + guides(col = FALSE) + 
+  scale_color_manual(values = myColors) +
+  labs(y = "Frequency", x = "Years") -> antigenFrequencies.plot
+save_plot(antigenFrequencies.plot, filename = "antigenFrequencies.pdf", base_height = 4, base_aspect_ratio = 1.5)
+
+
+#extract days that are 10 and then 
+population.antigenFrequencies %>%
+  filter(.id == "ten_sixth") %>%
+  filter((day %% 10 == 0)) %>%
+  mutate(antigen.prevalence = round(frequency * infected)) %>%
+  ggplot(aes(x = simTime, y = antigen.prevalence, group = antigentype, col = antigentype)) +
+  geom_area(position = 'stack') + guides(col = FALSE) +
+  scale_color_manual(values = myColors) 
+
   
 
 
-head(population.antigenseries)
+
+population.timeseries %>%
+  filter(.id == "ten_sixth") %>%
+  ggplot(aes(x = date, y = totalI)) + geom_line()+
+  scale_y_continuous(labels = fancy_scientific) +
+  labs(x = "Years", y = "Infected") -> infected.dynamics
+
+
+plot_grid(antigenFrequencies.plot, infected.dynamics, ncol = 1) -> ten.sixth.dynamics
+save_plot(ten.sixth.dynamics, filename = "ten.sixth.dynamics.pdf", base_height = 8, base_aspect_ratio = 1.2)
+
+
 
 
 ####### Antigenic Change
@@ -141,6 +182,9 @@ antigenic.mutations %>% group_by(day) %>%
 
 ##### Plotting frequencies of different antigenic 
 
+
+
+
 out_antigenFrequencies <- read_delim("~/Documents/projects/fluantigen/03-27-2017_09-26/out.antigenFrequencies.txt", 
                                      "\t", escape_double = FALSE, trim_ws = TRUE)
 
@@ -148,6 +192,35 @@ out_antigenFrequencies$antigentype = as.factor(out_antigenFrequencies$antigentyp
 out_antigenFrequencies$frequency = as.numeric(out_antigenFrequencies$frequency)
 
 ## Filter out Antigen Frequencies that are greater than 5%
+population.antigenFrequencies$.id <- factor(population.antigenFrequencies$.id, levels = c("ten_third", "ten_fourth", "ten_fifth", "ten_sixth"))
+
+population.antigenFrequencies %>%
+  group_by(.id, antigentype) %>%
+  summarize(max.freq = max(frequency)) %>%
+  ggplot(aes(max.freq)) + geom_histogram(bins = 50)+
+  facet_wrap(~.id, scales = c("free")) +
+  labs(x = "Maximum Frequency of Antigen") -> antigen.histogram
+save_plot(filename = "antigen.histogram.pdf", plot = antigen.histogram, base_height = 8)
+
+
+population.antigenFrequencies %>%
+  filter(.id == "ten_sixth") %>%
+  group_by(antigentype) %>%
+  summarize(max.freq = max(frequency)) %>%
+  ggplot(aes(max.freq)) + geom_histogram(bins = 50) +
+  coord_cartesian(ylim = c(0,100)) +
+  scale_x_continuous(breaks = seq(0, 1, .1)) -> zoomed.10_6
+
+save_plot(filename = "antigen.histogram106.pdf", plot = zoomed.10_6)
+
+
+population.timeseries %>%
+  filter(.id == "ten_sixth") %>%
+  mutate(prevalence = totalI/100,000) %>%
+  ggplot(aes(x = date, y = prevalence)) + geom_line()
+  
+
+
 out_antigenFrequencies %>%
   group_by(antigentype) %>%
   summarize(max.freq = max(frequency)) -> max.frequency
@@ -172,9 +245,14 @@ save_plot(filename = "ci.frequency.pdf", ci.frequency)
 
 
 ############ Library phylotate
+library(phylotate)
+pardefault <- par(no.readonly = T)
+par(mfrow=c(2,2))
 tree_sixth <- read_annotated(filename = paste0(analysis.dir,"/ten_sixth/out.trees.txt"), format = "newick")
 tree_third <- read_annotated(filename = paste0(analysis.dir,"/ten_third/out.trees.txt"), format = "newick")
 tree_fourth <- read_annotated(filename = paste0(analysis.dir,"/ten_fourth/out.trees.txt"), format = "newick")
 tree_fifth <- read_annotated(filename = paste0(analysis.dir,"/ten_fifth/out.trees.txt"), format = "newick")
+tree_third
 
+plot(tree_third, type = "phylogram", show.tip.label = FALSE)
 plot(tree_sixth, show.tip.label = FALSE)
