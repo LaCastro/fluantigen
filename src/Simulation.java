@@ -360,15 +360,15 @@ public class Simulation {
         	// want to put current infected count here 
         	int infected = this.getI();
         	for (int i = 0; i < currentFrequencies.size(); i++) {
-        		stream.printf("%.4f\t%d\t%d\t%.6f\t%d", Parameters.getDate(), Parameters.day,typeList.get(i), currentFrequencies.get(i), infected ); 
+        		stream.printf("%d\t%d\t%.6f\t%d", (Parameters.day-1), typeList.get(i), currentFrequencies.get(i), infected ); 
             	stream.println();
         		}
         	}
        	
       
         public void printTrackAntigens(PrintStream stream) {
-    		stream.printf("%.4f\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d", 
-    				Parameters.getDate(), getDiversity(), getTmrca(), getNetau(), getSerialInterval(), getAntigenicDiversity(), 
+    		stream.printf("%d\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d", 
+    				(Parameters.day-1), getDiversity(), getTmrca(), getNetau(), getSerialInterval(), getAntigenicDiversity(), 
     					getN(), getS(), getI(), getR(), getCases(), getMeanLoad(), getAntigenicTypesCount(),getCumlAntigenicTypes());
     		stream.println();
     	}
@@ -420,7 +420,7 @@ public class Simulation {
     	}
         
         public void printTrackFrequenciesHeader(PrintStream stream) {
-        	stream.print("simTime\tday\tantigentype\tfrequency\tinfected");
+        	stream.print("day\tantigentype\tfrequency\tinfected");
         	stream.println();
         }
         
@@ -602,7 +602,7 @@ public class Simulation {
 			seriesFile.delete();
 			seriesFile.createNewFile();
 			PrintStream seriesStream = new PrintStream(seriesFile);
-			System.out.println("day\tsimDay\toriAntigen\tdistance\tpostAntigen"); // console output for antigenic mutations
+			System.out.println("day\tsimDay\toriAntigen\tdistance\tmutLoad\tpostAntigen"); // console output for antigenic mutations
 			printHeader(seriesStream);
                         
 			String mutationSeriesName = time.concat("/out.mutationSeries.txt");

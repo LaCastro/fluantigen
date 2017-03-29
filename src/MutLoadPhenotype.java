@@ -131,7 +131,7 @@ public class MutLoadPhenotype implements Phenotype {
                 if (Parameters.day >= Parameters.antigenicEvoStartDay) {
                     int antigenicMutations = Random.nextPoisson(Parameters.lambdaAntigenic);
                     if (antigenicMutations > 0 & !lethality) {
-                    	Parameters.novelAntigen = true; 
+                    	
                     	double distanceFromParent = 0.0;
                         for (int m = 0; m < antigenicMutations; m++) {
                             if (Parameters.antigenicGammaShape == 1.0) {
@@ -139,14 +139,13 @@ public class MutLoadPhenotype implements Phenotype {
                             } else {
                                 distanceFromParent += Random.nextGamma(Parameters.antigenicGammaShape, (Parameters.meanAntigenicSize / Parameters.antigenicGammaShape));
                             }
-                            System.out.format("%d\t%.4f\t%d\t%.4f\t", Parameters.day, Parameters.getDate(), type, distanceFromParent);
-                            
+                            System.out.format("%d\t%.4f\t%d\t%.4f\t%d\t", Parameters.day, Parameters.getDate(), type, distanceFromParent, mutLoad);                       
                         
                         }
                         
                         if (distanceFromParent >= Parameters.thresholdAntigenicSize) {
                             type = AntigenicTree.add(antigenType, distanceFromParent);
-                           
+                            Parameters.novelAntigen = true; 
                         }
                         System.out.format("%d", type);
                         System.out.println();

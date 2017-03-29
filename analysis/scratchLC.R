@@ -13,10 +13,7 @@ analysis.dir <- "~/Dropbox/Projects/mutantigen/variation"
 variation.list = list.dirs(analysis.dir, full.names = TRUE, recursive = FALSE)
 
 
-variation.list
-
-
- <- lapply(variation.list, function(.file) {
+variation.list <- lapply(variation.list, function(.file) {
   file.list = list.files(.file)
   out.timeseries <- read.table(paste0(.file,"/out.trackAntigenSeries.txt"), header = TRUE)
   out.timeseries
@@ -83,17 +80,15 @@ fancy_scientific <- function(l) {
 analysis.dir <- "~/Dropbox/Projects/mutantigen/population_test/"
 population.list = list.dirs(analysis.dir, full.names = FALSE, recursive = FALSE)
 
-population.timeseries <- lapply(population.list, function(.file) {
-  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.timeseries.txt"), header = TRUE)
+population.antigenFrequencies <- lapply(population.list, function(.file) {
+  out.timeseries <- read.table(paste0(analysis.dir,.file, "/out.antigenFrequencies.txt"), header = TRUE)
   out.timeseries
 })
 
+names(population.antigenFrequencies) = population.list
+population.antigenFrequencies = rbindlist(population.antigenFrequencies, idcol = TRUE)
 
-
-names(population.timeseries) = population.list
-population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
-
-population.timeseries %>% 
+population.antigenFrequencies %>% 
   ggplot(aes(x = date, y = totalI)) + geom_line()+
   facet_wrap(~.id, scales = "free_y")
 
@@ -113,15 +108,62 @@ population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
 #  ggplot(aes(x = day, y = cumulativeTypes)) + geom_line()+
 #  facet_wrap(~.id, scales = "free_y")
 
+
+
+
 population.antigenFrequencies$antigentype = as.factor(population.antigenFrequencies$antigentype)
+
+
 
 
 population.antigenFrequencies %>%
   filter(.id == "ten_sixth") %>%
   group_by(antigentype) %>%
-  summarize(max.freq = max(frequency)) 
+  summarize(max.freq = max(frequency)) %>%
+  filter(max.freq > .1) -> successful.mutants
   
+
+successful.mutants.id = successful.mutants$antigentype
+
 myColors <- colorRampPalette(brewer.pal(8, "Accent"))(3321)
+myColors.short <- brewer.pal(n = 7, "Accent")
+
+population.antigenFrequencies %>%
+  filter(.id == "ten_sixth") %>%
+  filter(antigentype %in% successful.mutants.id) %>%
+  ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
+  geom_line(size = 1.2) + guides(col = FALSE) + 
+  scale_color_manual(values = myColors.short) +
+  labs(y = "Frequency", x = "Years") -> frequency.short
+
+
+
+
+
+population.antigenFrequencies %>% 
+  filter(.id == "ten_sixth") %>%
+  ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
+  geom_line() + guides(col = FALSE) + 
+  scale_color_manual(values = myColors) +
+  labs(y = "Frequency", x = "Years") -> antigenFrequencies.plot
+save_plot(antigenFrequencies.plot, filename = "antigenFrequencies.pdf", base_height = 4, base_aspect_ratio = 1.5)
+
+
+population.antigenFrequencies %>%
+  filter(.id == "ten_sixth") %>%
+  filter(antigentype %in% successful.mutants.id) %>%
+  mutate(antigen.prevalence = round(frequency * infected)) %>%
+  ggplot(aes(x = simTime, y = antigen.prevalence)) +
+  geom_area(aes(fill = antigentype), stat = "identity", position = "stack", na.rm = TRUE) +
+  #geom_line(aes(color = antigentype, fill = antigentype), size = 1.2) + guides(col = FALSE) + 
+  scale_color_manual(values = myColors.short) +
+  labs(y = "Individuals Infected", x = "Years") +
+  guides(fill = FALSE) -> individuals.infected.plot.successful
+
+
+
+plot_grid(individuals.infected.plot.successful, frequency.short, ncol = 1)
+
 
 population.antigenFrequencies %>% 
   filter(.id == "ten_sixth") %>%
@@ -138,10 +180,12 @@ population.antigenFrequencies %>%
   filter((day %% 10 == 0)) %>%
   mutate(antigen.prevalence = round(frequency * infected)) %>%
   ggplot(aes(x = simTime, y = antigen.prevalence, group = antigentype, col = antigentype)) +
-  geom_area(position = 'stack') + guides(col = FALSE) +
-  scale_color_manual(values = myColors) 
+  geom_line() + guides(col = FALSE) + 
+  scale_color_manual(values = myColors) +
+  labs(y = "Individuals Infected", x = "Years") -> individuals.infected.plot
 
-  
+ 
+plot_grid(antigenFrequencies.plot, individuals.infected.plot, ncol = 1) 
 
 
 
