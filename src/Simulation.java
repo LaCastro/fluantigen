@@ -602,7 +602,7 @@ public class Simulation {
 			seriesFile.delete();
 			seriesFile.createNewFile();
 			PrintStream seriesStream = new PrintStream(seriesFile);
-			System.out.println("day\tsimDay\toriAntigenType\tdistance"); // console output for antigenic mutations
+			System.out.println("day\tsimDay\toriAntigen\tdistance\tpostAntigen"); // console output for antigenic mutations
 			printHeader(seriesStream);
                         
 			String mutationSeriesName = time.concat("/out.mutationSeries.txt");

@@ -139,14 +139,17 @@ public class MutLoadPhenotype implements Phenotype {
                             } else {
                                 distanceFromParent += Random.nextGamma(Parameters.antigenicGammaShape, (Parameters.meanAntigenicSize / Parameters.antigenicGammaShape));
                             }
-                            System.out.format("%d %.4f %d %.4f", Parameters.day, Parameters.getDate(), type, distanceFromParent);
-                            System.out.println();
+                            System.out.format("%d\t%.4f\t%d\t%.4f\t", Parameters.day, Parameters.getDate(), type, distanceFromParent);
+                            
+                        
                         }
                         
                         if (distanceFromParent >= Parameters.thresholdAntigenicSize) {
                             type = AntigenicTree.add(antigenType, distanceFromParent);
-                            //System.out.println("Distance is Far Enough, new antigen type created");
+                           
                         }
+                        System.out.format("%d", type);
+                        System.out.println();
                     }
                 }
                 
