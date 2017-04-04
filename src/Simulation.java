@@ -352,7 +352,7 @@ public class Simulation {
 	}
         
         public void printFitness(PrintStream stream) {
-		stream.printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f", Parameters.getDate(), meanRDist, varRDist, meanBetaDist, varBetaDist, meanSigmaDist, varSigmaDist, covBetaSigmaDist);
+		stream.printf("%d\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f", Parameters.day-1, Parameters.getDate(), meanRDist, varRDist, meanBetaDist, varBetaDist, meanSigmaDist, varSigmaDist, covBetaSigmaDist);
 		stream.println();
 	}
         
@@ -408,7 +408,7 @@ public class Simulation {
         }
         
         public void printFitnessHeader(PrintStream stream) {
-		stream.print("date\tmeanR\tvarR\tmeanBeta\tvarBeta\tmeanSigma\tvarSigma\tcovBetaSigma");
+		stream.print("day\tsimDay\tmeanR\tvarR\tmeanBeta\tvarBeta\tmeanSigma\tvarSigma\tcovBetaSigma");
 		stream.println();
 	}
         
@@ -648,7 +648,8 @@ public class Simulation {
                 	ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
                 	ArrayList<Integer> typeList = getAntigenicTypes();
                 	printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
-        			Parameters.novelAntigen = false;
+        			printFitness(fitnessStream);
+                	Parameters.novelAntigen = false;
                 }
                 /* Here I want to be able to UpdateDiversity, UpdateFitnessDists
                  * Print out printTrackAntigens(trackAntigenStream) I think this is taken care of 

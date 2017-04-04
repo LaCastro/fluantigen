@@ -1258,6 +1258,8 @@ public class HostPopulation {
         
         public void printMutations(PrintStream stream) {
 		ArrayList<Integer> dist = getLoadDistribution();
+		stream.printf("%d",(Parameters.day-1));
+		stream.printf("%s", ", ");
                 for (int i = 0; i < dist.size(); i++) {
                     //String out = Integer.toString(dist.get(i));
                     stream.printf("%d", dist.get(i));

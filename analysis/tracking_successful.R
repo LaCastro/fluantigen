@@ -18,12 +18,32 @@ figure.dir <- "exploratory.figs/"
 ## Step 1 Figure out the antigen types that were successful - this should turn into a function to read in different files
 
 antigenFrequencies = read.outputfiles(analysis.dir, type = "/out.antigenFrequencies.txt")
-antigenFrequencies$antigentype = as.factor(antigenFrequencies$antigentype)
+successful.types = find.successful.types(antigenFrequencies, threshold = .1)
+length(successful.types)
 
 antigenFrequencies %>%
-  filter(.id == "ten_sixth2") -> antigenFrequencies
+  filter(antigentype %in% successful.types) -> antigenFrequencies.successful
 
-successful.types = find.successful.types(antigenFrequencies, threshold = .1)
+antigenFrequencies.successful$antigentype = as.factor(antigenFrequencies.successful$antigentype)
+antigenFrequencies.successful = antigenFrequencies.successful[!duplicated(antigenFrequencies.successful),]
+antigenFrequencies.wide = spread(antigenFrequencies.successful, key = antigentype, value = frequency, fill = 0) 
+
+
+myColors <- colorRampPalette(brewer.pal(8, "Accent"))(12)
+myColors.short <- brewer.pal(n = 5, "Accent")
+head(antigenFrequencies.wide)
+
+antigenFrequencies.wide %>%
+  gather(key = antigentype, value = frequency, 4:ncol(antigenFrequencies.wide)) %>%
+  ggplot(aes(x = simTime, y = frequency, col = antigentype)) +
+  geom_area(aes(color = antigentype, fill = antigentype), position = 'stack') + 
+  guides(fill = FALSE, color = FALSE) + 
+  scale_color_manual(values = myColors) +
+  scale_fill_manual(values = myColors) +
+  labs(y = "Frequency", x = "Years")
+
+
+
 
 ##### Step 2 Collect Data for time of emergence by individual file
 antigen.emergence <- read.outputfiles(analysis.dir, type = "/out.console.txt")
@@ -33,36 +53,38 @@ antigen.emergence %>%
   mutate(occurrence = !duplicated(postAntigen)) %>%
   filter(occurrence == "TRUE") -> parent.of.successful
 
+antigenFrequencies %>%
+  filter(antigentype %in% successful.types) -> antigenFrequencies.successful
+
+antigenFrequencies.successful$antigentype = as.factor(antigenFrequencies.successful$antigentype)
+antigenFrequencies.successful = antigenFrequencies.successful[!duplicated(antigenFrequencies.successful),]
+antigenFrequencies.wide = spread(antigenFrequencies.successful, key = antigentype, value = frequency, fill = 0) 
 
 
-
-##### For each parent-find out how many antigenic mutations had occurrenced on it without changing antigen type
-
-parents = parent.of.successful$oriAntigen
-
-### This doesn't work--doesn't show how many antigenic mutations have occurred on that specific mutatio
-
-antigen.emergence %>% 
-  filter(oriAntigen %in% parents) %>%
-  filter(oriAntigen == postAntigen) %>%
-  group_by(oriAntigen) %>%
-  summarize(previous.mutations = length(distance))
-
-
-myColors <- colorRampPalette(brewer.pal(8, "Accent"))(3321)
-myColors.short <- brewer.pal(n = 7, "Accent")
-
-population.antigenFrequencies %>%
-  filter(.id == "ten_sixth") %>%
-  filter(antigentype %in% successful.mutants.id) %>%
-  ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
-  geom_line(size = 1.2) + guides(col = FALSE) + 
-  scale_color_manual(values = myColors.short) +
+antigenFrequencies.wide %>%
+  gather(key = antigentype, value = frequency, 4:ncol(antigenFrequencies.wide)) %>%
+  ggplot(aes(x = simTime, y = frequency, col = antigentype)) +
+  geom_area(aes(color = antigentype, fill = antigentype), position = 'stack') + 
+  guides(fill = FALSE, color = FALSE) + 
+  scale_color_manual(values = myColors) +
+  scale_fill_manual(values = myColors) +
   labs(y = "Frequency", x = "Years") -> frequency.short
 
 
 
+antigenFrequencies.wide %>% 
+  gather(key = antigentype, value = frequency, 4:ncol(antigenFrequencies.wide)) %>%
+  mutate(prevalence = frequency * infected) %>%
+  ggplot(aes(x = simTime, y = prevalence, col = antigentype)) +
+  geom_area(aes(color = antigentype, fill = antigentype), position = 'stack') + 
+  guides(fill = FALSE, color = FALSE) + 
+ 
+  scale_color_manual(values = myColors) +
+  scale_fill_manual(values = myColors) +
+  labs(y = "Infected Individuals", x = "Years") -> successful.infecteds.plot
 
+
+###############################################################
 
 population.antigenFrequencies %>% 
   filter(.id == "ten_sixth") %>%

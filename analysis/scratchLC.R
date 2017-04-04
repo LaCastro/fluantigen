@@ -9,7 +9,8 @@ library(data.table)
 library(RColorBrewer)
 
 ### Timeseries
-analysis.dir <- "~/Dropbox/Projects/mutantigen/variation"
+analysis.dir <- "~/Dropbox/Projects/mutantigen/04-04-2017_09-20-07/"
+analysis.dir <- "~/Documents/projects/fluantigen/04-03-2017_12-32-14/"
 variation.list = list.dirs(analysis.dir, full.names = TRUE, recursive = FALSE)
 
 
@@ -108,32 +109,42 @@ population.timeseries = rbindlist(population.timeseries, idcol = TRUE)
 #  ggplot(aes(x = day, y = cumulativeTypes)) + geom_line()+
 #  facet_wrap(~.id, scales = "free_y")
 
+timeseries  = read.table(paste0(analysis.dir, "/out.timeseries.txt"), header = TRUE)
+desired.metrics = c("northI", "antigenicDiversity", "northTmrca", "diversity")
+
+timeseries %>%
+  gather(key = metric, value = value, - date) %>%
+  filter(metric %in% desired.metrics ) %>%
+  ggplot(aes(x = date, y = value)) + geom_line() +
+  facet_wrap(~metric, scales = "free")
+
+timeseries %>%
+  gather(key = metric, value = value, -date) %>%
+  filter(metric == "northTmrca") -> tmrca
+
+northTmrca
+antigenFrequencies = read.table(paste0(analysis.dir, "out.antigenFrequencies.txt"), header = TRUE)
+antigenFrequencies$antigentype = as.factor(antigenFrequencies$antigentype)
 
 
 
-population.antigenFrequencies$antigentype = as.factor(population.antigenFrequencies$antigentype)
 
-
-
-
-population.antigenFrequencies %>%
-  filter(.id == "ten_sixth") %>%
+antigenFrequencies %>%
   group_by(antigentype) %>%
   summarize(max.freq = max(frequency)) %>%
   filter(max.freq > .1) -> successful.mutants
   
+successful.mutants
 
 successful.mutants.id = successful.mutants$antigentype
 
-myColors <- colorRampPalette(brewer.pal(8, "Accent"))(3321)
-myColors.short <- brewer.pal(n = 7, "Accent")
+myColors <- colorRampPalette(brewer.pal(8, "Accent"))(length(successful.mutants.id))
 
-population.antigenFrequencies %>%
-  filter(.id == "ten_sixth") %>%
+antigenFrequencies %>%
   filter(antigentype %in% successful.mutants.id) %>%
   ggplot(aes(x = simTime, y = frequency, group = antigentype, col = antigentype)) + 
   geom_line(size = 1.2) + guides(col = FALSE) + 
-  scale_color_manual(values = myColors.short) +
+  scale_color_manual(values = myColors) +
   labs(y = "Frequency", x = "Years") -> frequency.short
 
 
@@ -288,15 +299,41 @@ out_antigenFrequencies %>%
 save_plot(filename = "ci.frequency.pdf", ci.frequency)
 
 
-############ Library phylotate
-library(phylotate)
-pardefault <- par(no.readonly = T)
-par(mfrow=c(2,2))
-tree_sixth <- read_annotated(filename = paste0(analysis.dir,"/ten_sixth/out.trees.txt"), format = "newick")
-tree_third <- read_annotated(filename = paste0(analysis.dir,"/ten_third/out.trees.txt"), format = "newick")
-tree_fourth <- read_annotated(filename = paste0(analysis.dir,"/ten_fourth/out.trees.txt"), format = "newick")
-tree_fifth <- read_annotated(filename = paste0(analysis.dir,"/ten_fifth/out.trees.txt"), format = "newick")
-tree_third
 
-plot(tree_third, type = "phylogram", show.tip.label = FALSE)
-plot(tree_sixth, show.tip.label = FALSE)
+### Mean Viral Fitness Series 
+
+viral.fitness = read.table(paste0(analysis.dir, "out.viralFitnessSeries.txt"), header = TRUE)
+viral.fitness = viral.fitness[!duplicated(viral.fitness),]
+
+
+metric.mean = c("meanR", "varR")
+metric.beta = c("meanBeta", "varBeta")
+metric.sigma = c("meanSigma", "varSigma")
+
+viral.fitness %>%
+  gather(key = metric, value = value, -date) %>%
+  mutate(value.exp = exp(value)) %>%
+  filter(metric %in% metric.mean) %>%
+  select(date, metric, value.exp) %>%
+  spread(key = metric, value = value.exp) %>%
+  ggplot(aes(x = date, y = meanR)) + geom_line() 
+
+viral.fitness %>%
+  gather(key = metric, value = value, -date) %>%
+  mutate(value.exp = exp(value)) %>%
+  filter(metric %in% metric.beta) %>%
+  select(date, metric, value.exp) %>%
+  spread(key = metric, value = value.exp) -> viral.fitness.beta
+
+viral.fitness %>%
+  gather(key = metric, value = value, -date) %>%
+  mutate(value.exp = exp(value)) %>%
+  filter(metric %in% metric.sigma) %>%
+  select(date, metric, value.exp) %>%
+  spread(key = metric, value = value.exp) -> viral.fitness.sigma
+
+
+viral.fitness.beta %>%
+  ggplot(aes(x = date, y = meanBeta)) + geom_ribbon(aes(ymin = meanBeta-varBeta, ymax = meanBeta + varBeta), fill = "lightblue") + 
+  geom_line(aes(y = meanBeta))
+
