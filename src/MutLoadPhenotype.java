@@ -147,7 +147,7 @@ public class MutLoadPhenotype implements Phenotype {
                             type = AntigenicTree.add(antigenType, distanceFromParent);
                             Parameters.novelAntigen = true; 
                         }
-                        System.out.format("%d", type);
+                        System.out.format("%d\t", type);
                         System.out.println();
                     }
                 }
