@@ -1,5 +1,11 @@
 ##### Plotting Functions
 
+set.my.colors <- function(length.of.success) {
+  myColors = colorRampPalette(brewer.pal(8, "Accent"))(length.of.success)
+  return(myColors)
+}
+
+
 plot.successful.frequency <- function(antigen.frequencies, successful.types) {
   # Plot the frequencies of successful antigens through time 
   myColors <- colorRampPalette(brewer.pal(8, "Accent"))(length(successful.types))

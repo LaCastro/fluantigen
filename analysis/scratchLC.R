@@ -8,9 +8,12 @@ library(reshape2)
 library(data.table)
 library(RColorBrewer)
 
+
+source('analysis_functions.R')
+source('plotting_functions.R')
+
 ### Timeseries
-analysis.dir <- "~/Dropbox/Projects/mutantigen/04-04-2017_09-20-07/"
-analysis.dir <- "~/Documents/projects/fluantigen/04-04-2017_03-13-02/"
+output.folder = "~/Dropbox/Projects/mutantigen/north_runs/"
 
 ## Will need this later for reading in multiple files 
 variation.list <- lapply(variation.list, function(.file) {
@@ -22,8 +25,6 @@ variation.list <- lapply(variation.list, function(.file) {
 variation.timeseries = rbindlist(all.timeseries, idcol = TRUE)
 variation.timeseries$.id = as.factor(variation.timeseries$.id)
 
-myColors <- colorRampPalette(brewer.pal(8, "Dark2"))(10)
-### Visualzing the frequency of the wildtype
 
 
 ##### Population
@@ -40,8 +41,11 @@ population.antigenFrequencies = rbindlist(population.antigenFrequencies, idcol =
 
 
 ################# Antigen Series
-timeseries  = read.table(paste0(analysis.dir, "/out.timeseries.txt"), header = TRUE)
+timeseries  = read.table(paste0(output.folder, "/out.timeseries.txt"), header = TRUE)
 desired.metrics = c("northI", "antigenicDiversity", "northTmrca", "diversity")
+
+
+
 
 timeseries %>%
   gather(key = metric, value = value, - date) %>%
@@ -51,6 +55,8 @@ timeseries %>%
 
 antigen.frequencies$antigentype = as.factor(antigen.frequencies$antigentype)
 
+successful.types = find.successful.types(frequencies = antigen.frequencies, threshold = .1)
+myColors = set.my.colors(length(successful.types))
 
 
 antigen.frequencies %>%
@@ -63,70 +69,6 @@ antigen.frequencies %>%
 
 frequency.plot <- plot.successful.frequency(antigen.frequencies, successful.types)
 infecteds.plot <- plot.successful.infections(antigen.frequencies, successful.types)
-
-
-####### Antigenic Change
-# one line graph, number of times they occur
-# histogram, the size
-library(readr)
-antigenic.mutations <- read_delim("~/Documents/projects/fluantigen/03-27-2017_09-26/out.console.txt", 
-                          " ", escape_double = FALSE, trim_ws = TRUE)
-antigenic.mutations$distance = as.numeric(antigenic.mutations$distance)
-
-# Plotting timeseries of antigenic mutations 
-antigenic.mutations %>% ggplot(aes(x = day, y = distance)) + 
-  geom_point() + facet_wrap(~oriAntigenType)
-
-antigenic.mutations %>% ggplot(aes(x = distance)) + geom_histogram() + geom_vline(xintercept = .012)
-
-antigenic.mutations %>% filter(oriAntigenType == "0") %>%
-  ggplot(aes(x = distance)) + geom_histogram() + geom_vline(xintercept = .012)
-
-antigenic.mutations %>% group_by(day) %>%
-  summarise(num.mutations = length(day)) %>%
-  ggplot(aes(x = day, y = num.mutations)) + geom_line()
-
-
-##### Plotting frequencies of different antigenic 
-
-
-### Mean Viral Fitness Series 
-
-viral.fitness = read.table(paste0(analysis.dir, "out.viralFitnessSeries.txt"), header = TRUE)
-viral.fitness = viral.fitness[!duplicated(viral.fitness),]
-
-
-metric.mean = c("meanR", "varR")
-metric.beta = c("meanBeta", "varBeta")
-metric.sigma = c("meanSigma", "varSigma")
-
-viral.fitness %>%
-  gather(key = metric, value = value, -date) %>%
-  mutate(value.exp = exp(value)) %>%
-  filter(metric %in% metric.mean) %>%
-  select(date, metric, value.exp) %>%
-  spread(key = metric, value = value.exp) %>%
-  ggplot(aes(x = date, y = meanR)) + geom_line() 
-
-viral.fitness %>%
-  gather(key = metric, value = value, -date) %>%
-  mutate(value.exp = exp(value)) %>%
-  filter(metric %in% metric.beta) %>%
-  select(date, metric, value.exp) %>%
-  spread(key = metric, value = value.exp) -> viral.fitness.beta
-
-viral.fitness %>%
-  gather(key = metric, value = value, -date) %>%
-  mutate(value.exp = exp(value)) %>%
-  filter(metric %in% metric.sigma) %>%
-  select(date, metric, value.exp) %>%
-  spread(key = metric, value = value.exp) -> viral.fitness.sigma
-
-
-viral.fitness.beta %>%
-  ggplot(aes(x = date, y = meanBeta)) + geom_ribbon(aes(ymin = meanBeta-varBeta, ymax = meanBeta + varBeta), fill = "lightblue") + 
-  geom_line(aes(y = meanBeta))
-
 
 
 ################################ Plotting successful versus non-successful
@@ -154,3 +96,85 @@ meta.data.long %>%
   filter(metric %in% viral.fitness.metrics) %>%
   ggplot(aes(success, value)) + geom_boxplot() +
   facet_wrap(~metric, scales = "free")
+
+
+
+####################### Histograms of each, divide it by success
+meta.data.long %>%
+  filter(metric %in% antigen.specific) %>%
+  ggplot(aes(x=value, color = success, fill  = success)) + 
+  geom_histogram(bins=5, position = "dodge") + 
+  facet_wrap(~metric, scales = "free")
+
+
+meta.data.long %>%
+  filter(metric %in% viral.fitness.metrics) %>%
+  ggplot(aes(x=value, color = success, fill  = success)) + 
+  geom_histogram(bins=5, position = "dodge") + 
+  facet_wrap(~metric, scales = "free")
+
+
+meta.data.long %>%
+  filter(metric %in% pop.dynamics) %>%
+  ggplot(aes(x=value, color = success, fill  = success)) + 
+  geom_histogram(bins=5, position = "dodge") + 
+  facet_wrap(~metric, scales = "free")
+
+
+
+#### Read multiple runs of similar type 
+console.data = read.console.files(output.folder)
+
+
+#create combined meta data for each entry of list 
+trial.meta <- create.meta.all(dir = output.folder)
+timeseries.all = read.outputfiles(output.folder, "/out.timeseries.txt")
+
+
+timeseries.all %>% 
+  gather(key = metric, value = value, -.id, -date) %>%
+  filter(metric == "totalI") %>%
+  ggplot(aes(x = date, y = value, group = .id, color = .id)) + 
+  geom_line(size = 1.3)
+
+desired.metrics = c("diversity", "tmrca", "antigenicDiversity")
+timeseries.all %>%
+  gather(key = metric, value = value, -.id, -date) %>%
+  filter(metric %in% desired.metrics) %>%
+  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
+  geom_smooth() +
+  facet_wrap(~metric, scales = "free", ncol = 1)
+  
+
+
+########## Antigen Frequencies
+trial.data = create.meta.data.all(dir = output.folder)
+
+antigen.freq.all <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
+
+trial.data %>%
+  group_by(.id) %>%
+  filter(success == "yes") %>%
+  select(.id, postAntigen) -> success.types
+
+### For each successtype, go into antigen frequecny all, filter and full out
+
+antigen.freq.success.plot = dlply(.data = success.types, .variables = ".id", function(sim) {
+  successful.types = sim$postAntigen 
+  successful.types = c(0, successful.types)
+  antigen.freq.all %>%
+    filter(.id == sim$.id[1]) -> antigen.freq.sim
+  frequency.plot = plot.successful.frequency(antigen.frequencies = antigen.freq.sim, successful.types)
+  return(frequency.plot)
+})
+
+antigen.infect.success.plot = dlply(.data = success.types, .variables = ".id", function(sim) {
+  successful.types = sim$postAntigen 
+  successful.types = c(0, successful.types)
+  antigen.freq.all %>%
+    filter(.id == sim$.id[1]) -> antigen.freq.sim
+  frequency.plot = plot.successful.infections(antigen.frequencies = antigen.freq.sim, successful.types)
+  return(frequency.plot)
+})
+
+antigen.infect.success.plot[[1]]
