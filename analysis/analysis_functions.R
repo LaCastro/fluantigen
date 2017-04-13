@@ -105,7 +105,7 @@ create.meta.data <- function(sim.dir) {
   
   # Differentiate whether it was sucessful or not
   meta.data$success = NA
-  successful.types = find.successful.types(antigen.frequencies, threshold = .1)
+  successful.types = find.successful.types(antigen.frequencies, threshold = .15)
   meta.data %>%
     mutate(success = ifelse(postAntigen %in% successful.types, "yes", "no")) -> meta.data
   

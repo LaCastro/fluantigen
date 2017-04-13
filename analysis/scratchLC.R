@@ -45,8 +45,6 @@ timeseries  = read.table(paste0(output.folder, "/out.timeseries.txt"), header = 
 desired.metrics = c("northI", "antigenicDiversity", "northTmrca", "diversity")
 
 
-
-
 timeseries %>%
   gather(key = metric, value = value, - date) %>%
   filter(metric %in% desired.metrics ) %>%
@@ -147,34 +145,111 @@ timeseries.all %>%
   
 
 
-########## Antigen Frequencies
-trial.data = create.meta.data.all(dir = output.folder)
+########## Antigen Frequencies START HERE 
+source('analysis_functions.R')
+output.folder = "~/Dropbox/Projects/mutantigen/north_runs/"
 
+#Read and combine files 
+north.data = create.meta.data.all(dir = output.folder)
 antigen.freq.all <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
 
-trial.data %>%
+north.data %>%
   group_by(.id) %>%
   filter(success == "yes") %>%
   select(.id, postAntigen) -> success.types
 
 ### For each successtype, go into antigen frequecny all, filter and full out
 
-antigen.freq.success.plot = dlply(.data = success.types, .variables = ".id", function(sim) {
+##### Read in the antigen frequencies and then store those in a list 
+
+antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
   successful.types = sim$postAntigen 
   successful.types = c(0, successful.types)
   antigen.freq.all %>%
-    filter(.id == sim$.id[1]) -> antigen.freq.sim
-  frequency.plot = plot.successful.frequency(antigen.frequencies = antigen.freq.sim, successful.types)
-  return(frequency.plot)
+    filter(.id == sim$.id[1]) %>%
+    filter(antigentype %in% successful.types) -> antigen.freq.sim
+  return(antigen.freq.sim)
 })
 
-antigen.infect.success.plot = dlply(.data = success.types, .variables = ".id", function(sim) {
-  successful.types = sim$postAntigen 
-  successful.types = c(0, successful.types)
-  antigen.freq.all %>%
-    filter(.id == sim$.id[1]) -> antigen.freq.sim
-  frequency.plot = plot.successful.infections(antigen.frequencies = antigen.freq.sim, successful.types)
-  return(frequency.plot)
+#Determine the maximum number of colors going to need 
+antigen.freq.success.df %>%
+  group_by(.id) %>%
+  summarize(num.transitions = length(unique(antigentype))) -> num.transitions
+
+max.color = sum(num.transitions$num.transitions)
+myColors = set.my.colors(max.color)
+
+## Need to first go in and fill all the missing values and then combine
+ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", function(sim) {
+  sim %>%
+    distinct(day, antigentype, .keep_all = TRUE) %>%
+    spread(key = antigentype, value = frequency, fill = 0) %>%
+    gather(key = antigentype, value = frequency, -1, -2, - infected)  -> antigen.freq.long
+  return(antigen.freq.long)
 })
 
-antigen.infect.success.plot[[1]]
+ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
+
+## Need to first go in and fill all the missing values and then combine
+# Plot Frequency First 
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  filter(frequency > 0) %>%
+  ggplot(aes(x = year, y = frequency, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id) +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot
+freq.plot
+save_plot(filename = paste0(output.folder, "exploratory_figures/freq.plot.pdf"), freq.plot,
+          base_height = 8, base_aspect_ratio = 1.5)
+  
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  mutate( prevalence = infected*frequency) %>%
+  filter(prevalence > 0) %>%
+  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id, scales = "free_y") +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.plot
+
+prev.plot
+save_plot(filename = paste0(output.folder, "exploratory_figures/prev.plot.pdf"), prev.plot,
+          base_height = 8, base_aspect_ratio = 1.5)
+
+##########################
+# Histograms of the metrics
+ 
+antigen.specific <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
+pop.dynamics <- c("S", "I")
+viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
+
+north.data %>%
+  gather(key = metric, value = value, -postAntigen, -success, -.id) -> north.data.long
+north.data.long$value = as.numeric(north.data.long$value)
+
+north.data.long %>%
+  filter(metric %in% pop.dynamics) %>%
+  filter(metric == "I") %>%
+  ggplot(aes(success, value)) + geom_boxplot() +
+  facet_wrap(~.id, scales = "free")
+
+# Going to group,
+
+north.data.long %>%
+  filter(metric %in% antigen.specific) %>%
+  ggplot(aes(success,value)) + 
+  geom_violin() + geom_jitter(height = 0, width = 0.1) +
+  facet_grid(metric~.id, scales = "free")
+
+
+north.data.long %>%
+  filter(metric %in% viral.fitness.metrics) %>%
+  ggplot(aes(success,value)) + 
+  geom_violin() + geom_jitter(height = 0, width = 0.1) +
+  facet_grid(metric~.id, scales = "free")

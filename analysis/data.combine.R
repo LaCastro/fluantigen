@@ -13,6 +13,7 @@ library(RColorBrewer)
 
 output.folder = "../04-05-2017_09-25-21/"
 output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
+output.folder = "~/Dropbox/Projects/mutantigen/north_runs/"
 
 antigenic.mutations = read.table(paste0(output.folder, "out.console.txt"), header = TRUE, fill = TRUE)
 antigenic.mutations = antigenic.mutations[1:(nrow(antigenic.mutations)-2),]
@@ -75,6 +76,7 @@ create.meta.data <- function(sim.dir) {
 }
 
 trial.1 = create.meta.data(sim.dir = paste0(output.folder, "north3"))
+north = create.meta.data.all(dir = output.folder)
 
 
 novel.types = find.antigen.emergence(antigenic.mutations)
