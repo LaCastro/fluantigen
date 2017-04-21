@@ -105,7 +105,7 @@ create.meta.data <- function(sim.dir) {
   
   # Differentiate whether it was sucessful or not
   meta.data$success = NA
-  successful.types = find.successful.types(antigen.frequencies, threshold = .15)
+  successful.types = find.successful.types(antigen.frequencies, threshold = .1)
   meta.data %>%
     mutate(success = ifelse(postAntigen %in% successful.types, "yes", "no")) -> meta.data
   
@@ -122,5 +122,48 @@ create.meta.data.all <- function(dir) {
   names(population.data) = file.list
   population.data = rbindlist(population.data, idcol = TRUE)
   return(population.data)
+}
+
+
+
+count.n.antigens <- function(antigen.record) {
+  antigen.record %>%
+    group_by(.id) %>%
+    summarize(unique.antigens = n_distinct(antigentype)) -> n.antigens
+}
+
+count.success.antigens <- function(antigen.record, threshold) {
+  antigen.record %>%
+    group_by(.id, antigentype) %>%
+    summarize(max.freq = max(frequency)) %>%
+    ungroup() %>%
+    group_by(.id) %>%
+    summarize(above.threshold = sum(max.freq > threshold)) 
+}
+
+calculate.success.rate <- function(n.unique.antigens, n.success.antigens) {
+  success.rate = n.success.antigens$above.threshold/n.unique.antigens$unique.antigens
+  quantile(success.rate, probs = c(0.025, .5, 0.975))*100
+}
+
+antigen.success.summary <- function(threshold.levels, antigen.frequencies) {
+  
+  n.unique.antigens = count.n.antigens(antigen.frequencies)
+  
+  antigen.success.quantile = adply(.data = threshold.levels, .margins = 1, function(thres) {
+    success.antigens = count.success.antigens(antigen.frequencies, threshold = thres)
+    quantiles = calculate.success.rate(n.unique.antigens, n.success.antigens = success.antigens)
+  })
+  num.antigen.strains = adply(.data = threshold.levels, .margins = 1, function(thres) {
+    success.antigens = count.success.antigens(antigen.frequencies, threshold = thres)
+    success.antigens %>%
+      summarize(min = min(above.threshold),
+                mean = mean(above.threshold),
+                max = max(above.threshold))
+  })
+  antigen.success.summary.df = left_join(antigen.success.quantile, num.antigen.strains)
+  antigen.success.summary.df$X1 = threshold.levels 
+  colnames(antigen.success.summary.df)[1] = "threshold"
+  return(antigen.success.summary.df)
 }
 
