@@ -14,34 +14,164 @@ source('analysis_functions.R')
 source('plotting_functions.R')
 
 ### Timeseries
-output.folder = "~/Dropbox/Projects/mutantigen/north_runs/"
-
-
+tropics.output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
+north.output.folder = "~/Dropbox/Projects/mutantigen/north/"
 
 #create combined meta data for each entry of list 
-trial.meta <- create.meta.all(dir = output.folder)
 timeseries.all = read.outputfiles(output.folder, "/out.timeseries.txt")
+north.timeseries = read.outputfiles(north.output.folder, "/out.timeseries.txt")
+north.viralfitness = read.outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
+
+north.track.antigen = read.outputfiles(north.output.folder, "/out.trackAntigenSeries.txt")
+north.track.fitness = read.outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
+total.timeseries = rbind(efi.timeseries.0, efi.timeseries.100, efi.timeseries.300, efi.timeseries.400, north.timeseries, idcol = "source")
+
+total.timeseries %>%
+  gather(key = metric, value = value, -.id, -date, -source) %>%
+  filter(metric == "totalS") %>%
+  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
+  geom_line(size = 1.5)+
+  facet_wrap(~source) +
+  guides(color = FALSE)
 
 
 
-timeseries.all %>% 
-  mutate(correct.dynamics = ifelse(.id %in% correct, "correct", "incorrect")) %>%
-  gather(key = metric, value = value, -.id, -date, -correct.dynamics) %>%
-  filter(metric == "totalI") %>%
-  ggplot(aes(x = date, y = value, group = .id, color = correct.dynamics)) + 
-  geom_line(size = 1.3)
+correct.trials = c("north1", "north12", "north14", "north16", "north2", "north8")
+incorrect.trials = c("north3", "north4", "north5", "north6", "north7", "north9",
+                     "north10", "north11", "north13", "north15", "north17", 
+                     "north18", "north19", "north20")
 
-desired.metrics = c("diversity", "tmrca", "antigenicDiversity")
-colnames(timeseries.all)
+
+
+display <- function(correct.sample, incorrect.sample) { 
+  north.timeseries %>%
+    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    gather(key = metric, value = value, -.id, -date, -trial.type) %>%
+    filter((metric == "northS" | metric == "northI") & (.id == correct.sample | .id == incorrect.sample)) %>%
+    ggplot(aes(x = date, y = value/100000)) +
+    geom_line(size = 1.5) +
+    facet_grid(metric~trial.type, scales = "free") +
+    ylab(label = "Number (per 100K)") + 
+    theme(strip.text.x = element_text(size = 8)) +
+    theme(strip.text.y = element_text(size = 6)) -> pop.dynamics
+    
+  desired.antigenic.metrics = c("antigenicTypes", "meanLoad", "diversity", "antigenicDiversity")
+  
+  north.track.antigen %>%
+    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    gather(key = metric, value = value, -.id, -day, -trial.type) %>%
+    filter(metric %in% desired.antigenic.metrics  & (.id == correct.sample | .id == incorrect.sample)) %>%
+    ggplot(aes(x = day/365, y = value)) +
+    geom_smooth(size = 1.5) +
+    geom_line()+
+    scale_x_continuous(limits = c(0,10), breaks  = seq(from = 0, to = 10, by = 1)) + 
+    facet_grid(metric~trial.type, scales = "free") +
+    theme(strip.text.x = element_text(size = 8)) +
+    theme(strip.text.y = element_text(size = 6))  -> antigenic.dynamics
+  
+  desired.fitness.metrics = c("meanR", "meanBeta")
+
+  north.track.fitness %>%
+    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    gather(key = metric, value = value, -.id, -day, -trial.type) %>%
+    filter(metric %in% desired.fitness.metrics & (.id == correct.sample | .id == incorrect.sample)) %>%
+    ggplot(aes(x = day/365, y = value)) +
+    geom_smooth(size = 1.5)+
+    geom_line(size = 1.5) +
+    facet_grid(metric~trial.type, scales = "free") +
+    theme(strip.text.x = element_text(size = 8)) +
+    theme(strip.text.y = element_text(size = 6)) -> fitness.dynamics
+
+  
+  plot_grid(pop.dynamics, antigenic.dynamics, fitness.dynamics, ncol = 1, rel_heights = c(.9, 1.3, 1))
+}
+
+
+correct.sample = sample(correct.trials, 1)
+incorrect.sample = sample(incorrect.trials, 1)
+trial <- display(correct.sample, incorrect.sample)
+save_plot(trial, filename = paste0(exploratory.figures, "trial5.pdf"), base_height = 8)
+
+
+meanLoad = plot_grid(meanLoad.correct, meanLoad.incorrect)
+meanR = plot_grid(meanR.correct, meanR.incorrect)
+ = plot_grid(meanSigma.correct, meanSigma.incorrect)
+antigenicTypes = plot_grid(antigenicTypes.correct, antigenicTypes.incorrect)
+susceptibility = plot_grid(susceptibility.correct, susceptibility.incorrect)
+popdynamics  = plot_grid(pop.dynamics.correct, pop.dynamics.incorrect)
+
+
+north.track.fitness %>%
+  mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+  gather(key = metric, value = value, -.id, -day, -trial.type) -> north.fitness.l
+north.track.antigen %>%
+  mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+  gather(key = metric, value = value, -.id, -day, -trial.type) -> north.antigen.l
+
+north.factors = rbind(north.fitness.l, north.antigen.l)
+head(north.factors)
+  
+
+desired.trials = c("north1", "north2", "north8", "north12")
+
+north.timeseries %>%
+  gather(key = metric, value = value, -.id, -date) %>%
+  filter(metric == "northI" & .id %in% desired.trials) %>%
+  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
+  geom_line()+
+  scale_color_manual(values = set.my.colors(4))
+  
+
+my.colors = set.my.colors(10)
 
 timeseries.all %>%
   gather(key = metric, value = value, -.id, -date) %>%
   filter(metric %in% desired.metrics) %>%
   ggplot(aes(x = date, y = value, group = .id, color = .id)) +
   geom_smooth() +
-  facet_grid(~metric, scales = "free", ncol = 1)
-  
+  scale_color_manual(values = my.colors)+
+  facet_wrap(~metric, scales = "free")
 
+
+timeseries.all %>%
+  group_by(.id) %>%
+  mutate(years = (seq(from = 10, to = 3650, by = 10))/365) %>%
+  ungroup() %>%
+  group_by(years) %>%
+  summarize(mean.diversity = mean(diversity),
+            mean.antiDiversity = mean(antigenicDiversity), 
+            mean.IS = mean(totalI/totalS),
+            mean.tmrca = mean(tmrca),
+            cases.per100k = mean(totalI)/100000) %>%
+  gather(key = metric, value = value, -years) %>%
+  mutate(region = "tropics") -> tropics.timeseries.long
+
+
+north.timeseries %>%
+  group_by(.id) %>%
+  filter(.id %in% desired.trials) %>%
+  mutate(years = (seq(from = 10, to = 3650, by = 10))/365) %>%
+  ungroup() %>%
+  group_by(years) %>%
+  summarize(mean.diversity = mean(diversity),
+            mean.antiDiversity = mean(antigenicDiversity), 
+            mean.IS = mean(totalI/totalS),
+            mean.tmrca = mean(tmrca),
+            cases.per100k = mean(totalI)/100000) %>%
+  gather(key = metric, value = value, -years) %>%
+  mutate(region = "north") -> north.timeseries.long
+
+
+
+
+
+
+timeseries.long = rbind(tropics.timeseries.long, north.timeseries.long)
+
+timeseries.long %>%
+  ggplot(aes(x = years, y = value, color = region)) + 
+  geom_line()  + facet_wrap(~metric, scales = "free")
+  
 ###### Would also have to read in viral fitness here to see what's going on 
 
 
@@ -50,25 +180,119 @@ source('analysis_functions.R')
 output.folder = "~/Dropbox/Projects/mutantigen/north/"
 output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
 
+
+
 #Read and combine files 
-tropics.data = create.meta.data.all(dir = output.folder)
-antigen.freq.all <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
+emergence.data = create.meta.data.all(dir = output.folder)
+emergence.data.N = create.meta.data.all(dir = "~/Dropbox/Projects/mutantigen/north/")
+antigen.frequencies <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
 
 
-###### Count the number of days each antigen is above threshold
-## Create a combined figure for this 
+emergence.data.N %>%
+  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
+  filter(metric %in% antigen.specific.metrics) -> Nemergence.antigenspecific.l
+Nemergence.antigenspecific.l$value = as.numeric(Nemergence.antigenspecific.l$value)
 
-antigen.freq.all %>%
-  group_by(.id) %>%
-  filter(frequency > .10) %>%
-  group_by(.id, antigentype) %>%
-  summarize(n = n(),
-            max.freq = max(frequency)) %>%
-  filter(n > 180) -> above.threshold
+emergence.data.l = rbind(emergence.antigenspecific.l,  Nemergence.antigenspecific.l)
+tail(emergence.data.l)
+#######
+
+antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
+
+exploratory.figures = "../analysis/exploratory.figs/"
+
+ggplot(aes(x = life.length, y = final.max, color = success))
+
+emergence.data %>% 
+  select(life.length, final.max, success) %>%
+  ggplot(aes(x = life.length, y = final.max, color = success)) + geom_point() + 
+  scale_color_manual(values = c("purple", "orange")) + geom_vline(xintercept = 180) + geom_hline(yintercept = .1)
+
+
+emergence.data %>%
+  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
+  filter(metric %in% antigen.specific.metrics) -> emergence.antigenspecific.l
+emergence.antigenspecific.l$value = as.numeric(emergence.antigenspecific.l$value)
+
+emergence.antigenspecific.l %>%
+  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
+  facet_wrap(~metric, scales = "free_x") +
+  scale_color_manual(values = c("purple", "orange")) -> scatter.antigenspecific.plot
+save_plot(scatter.antigenspecific.plot, filename = paste0(exploratory.figures, "T.freq.scatter.antigenspecific.pdf"),base_height = 8,  base_aspect_ratio = 1.8)
+
+emergence.antigenspecific.l %>%
+  ggplot(aes(value, fill = success, color = success)) + 
+  geom_density(alpha = .5) + 
+  facet_wrap(~metric, scales = "free") +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  theme(axis.text.x = element_text(size = 8)) -> antigenspecific.density
+save_plot(antigenspecific.density, filename = paste0(exploratory.figures, "Tantigenspecific.density.pdf"), 
+          base_height = 8, base_aspect_ratio = 2)
+
+
+pop.dynamics <- c("S", "I")
+
+emergence.data %>%
+  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
+  filter(metric %in% pop.dynamics) -> emergence.popdynamics.l
+emergence.popdynamics.l$value = as.numeric(emergence.popdynamics.l$value)
+emergence.popdynamics.l %>%
+  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
+  facet_wrap(~metric, scales = "free_x") +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_x_continuous(labels = fancy_scientific) -> scatter.popdynamics.plot
+save_plot(scatter.popdynamics.plot, filename = paste0(exploratory.figures, "Tlife.scatter.popdynamics.pdf"), base_aspect_ratio = 1.8)
+
+
+emergence.popdynamics.l %>%
+  ggplot(aes(value, fill = success, color = success)) + 
+  geom_density(alpha = .5) + 
+  facet_wrap(~metric, scales = "free_x") +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  scale_x_continuous(labels = fancy_scientific) +
+  theme(axis.text.x = element_text(size = 8)) -> pop.dynamics.density
+save_plot(pop.dynamics.density, filename = paste0(exploratory.figures, "Tpop.dynamics.density.pdf"), base_aspect_ratio = 2)
+                                                                     
+
+
+
+viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
+
+emergence.data %>%
+  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
+  filter(metric %in% viral.fitness.metrics) -> emergence.viral.fitness.l
+emergence.viral.fitness.l$value = as.numeric(emergence.viral.fitness.l$value)
+
+emergence.viral.fitness.l %>%
+  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
+  facet_wrap(~metric, scales = "free_x") +
+  scale_color_manual(values = c("purple", "orange")) -> scatter.viral.fitness.plot
+save_plot(scatter.viral.fitness.plot, filename = paste0(exploratory.figures, "Tlife.scatter.viral.fitness.pdf"),base_height = 8,  base_aspect_ratio = 1.8)
+
+
+emergence.viral.fitness.l %>%
+  ggplot(aes(value, fill = success, color = success)) + geom_density(alpha = .5) + 
+  facet_wrap(~metric, scales = "free") +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  theme(axis.text.x = element_text(size = 8)) -> density.viral.fitness
+save_plot(density.viral.fitness, filename = paste0(exploratory.figures, "Tviralfitness.density.pdf"), base_height = 8, base_aspect_ratio = 1.5)
+
+
+emergence.antigen.metrics.l$value = as.numeric(emergence.antigen.metrics.l$value)
+
+
+
 
 
 ######### Successful  Dynamics 
-tropics.data %>%
+emergence.data %>%
   group_by(.id) %>%
   filter(success == "yes") %>%
   select(.id, postAntigen) -> success.types
@@ -107,6 +331,22 @@ ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
 
 ## Need to first go in and fill all the missing values and then combine
 # Plot Frequency First 
+desired.trials = c("north1", "north12", "north14", "north2", "north16")
+
+ant.freq.success.l %>%
+  filter(.id %in% desired.trials) -> ant.freq.success.l
+
+# Calculate life spans
+north.life.spans = calculate.life.spans(ant.freq.success.l)
+tropics.life.spans = calculate.life.spans(ant.freq.success.l) 
+lifespans = bind_rows(north.life.spans, tropics.life.spans, .id = "id")
+
+lifespans %>%
+  ggplot(aes(years, color = id, fill = id)) + geom_density(alpha = .5) + 
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_fill_manual(values = c("purple", "orange"))
+  
+
 ant.freq.success.l %>%
   mutate(year = day/365) %>%
   filter(frequency > 0) %>%
@@ -116,8 +356,8 @@ ant.freq.success.l %>%
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
-freq.plot.tropics
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.north
+
 save_plot(filename = paste0(exploratory.figures, "freq.plotT.pdf"), freq.plot.tropics,
           base_height = 8, base_aspect_ratio = 1.5)
   
@@ -131,10 +371,12 @@ ant.freq.success.l %>%
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> prev.plot.tropics
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.plot.north
 
 save_plot(filename = paste0(exploratory.figures, "prev.plotT.pdf"), prev.plot.tropics,
           base_height = 8, base_aspect_ratio = 1.5)
+
+
 
 
 
@@ -147,20 +389,20 @@ viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta",
 
 
 ################## Creating the quantile metrics ----  Need a function for this 
-tropics.data %>%
-  gather(key = metric, value = value, -postAntigen, -success, -.id) -> tropics.data.long
-tropics.data.long$value = as.numeric(tropics.data.long$value)
+emergence.data %>%
+  gather(key = metric, value = value, -postAntigen, -success, -.id) -> data.long
+data.long$value = as.numeric(data.long$value)
 
-tropics.data.long %>%
+data.long %>%
   group_by(success, metric, .id) %>%
-  nest(-metric) -> tropics.nested
+  nest(-metric) -> north.nested
 
-tropics.nested %>%
+north.nested %>%
   mutate(Quantiles = map(data, ~ quantile(.$value, probs = c(.025,.5,.975), na.rm = TRUE))) %>%
   unnest(map(Quantiles, tidy)) %>%
-  spread(names, value = x) -> tropics.data.quantiles
+  spread(names, value = x) -> north.data.quantiles
 
-colnames(tropics.data.quantiles) = c("success", "metric", "trial", "lower", "median", "upper")
+colnames(north.data.quantiles) = c("success", "metric", "trial", "lower", "median", "upper")
 
 
 # Combine the two meta popualtions 
@@ -170,16 +412,16 @@ combined.data$source[which(combined.data$source == 1)] = "tropics"
 
 
 combined.data %>%
-  filter(metric %in% viral.fitness.metrics) %>%
+  filter(metric %in% antigen.specific.metrics) %>%
   ggplot(aes(x = success, y = median, group = trial, color = source)) + 
   geom_point(position = position_dodge(width = 0.5)) +
   geom_errorbar(aes(ymin = lower, ymax = upper), width = .1, position = position_dodge(width = 0.5)) +
   scale_color_manual(values = c("purple", "orange")) +
   facet_wrap(~metric, scales = "free") +
   labs(x = "Successful Transition", y = "Number of Individuals") +
-  ggtitle("Viral Fitness Metrics 10 Trials, 40 mil people") -> viral.fitness.plot
+  ggtitle("Viral Fitness Metrics 10 Trials, 40 mil people") -> antigen.specific.plot
 
-save_plot(filename = paste0(exploratory.figures, "viral.fitness.plot.pdf"), viral.fitness.plot, base_height = 8, base_aspect_ratio = 1.5)
+save_plot(filename = paste0(exploratory.figures, "antigen.specific.plotCulled.pdf"), antigen.specific.plot, base_height = 8, base_aspect_ratio = 1.5)
 
 ##############################################################
 #################### Trying to calculate days between successull ---- work on this 
@@ -283,3 +525,58 @@ ggplot(time.difference, aes(time.difference, color = region, fill = region)) + g
 #  group_by(.id) %>%
 #  summarize(above.threshold  = sum(max.freq > .25)) -> above.threshold
 
+
+desired.metrics = c("diversity", "tmrca", "netau", "serialInterval", "antigenicDiversity")
+
+
+north.timeseries %>%
+  mutate(north.type = ifelse(.id %in% desired.trials, "correct.run", "incorrect.run")) %>%
+  mutate(i.s = totalI/totalS) %>%
+  gather(key = metric, value = value, -date, -.id, -north.type) %>%
+  group_by(date, metric, north.type) %>%
+  summarize(average = mean(value),
+            sd = sd(value)) %>%
+  filter(metric %in% desired.metrics | metric == "i.s") %>%
+  ggplot(aes(x = date, y = average, color = north.type, group = north.type)) + geom_line(size =  1.3) + 
+  facet_wrap(~metric, scales = "free") +
+  scale_color_manual(values = set.my.colors(2))
+
+
+
+north.viralfitness %>%
+  mutate(north.type = ifelse(.id %in% desired.trials, "correct.run", "incorrect.run")) %>%
+  gather(key = metric, value = value, -day, -.id, -north.type, -simDay) %>%
+  group_by(day, metric, north.type) %>%
+  summarize(average = mean(value),
+            sd = sd(value)) %>%
+  ggplot(aes(x = day, y = average, color = north.type, group = north.type)) + geom_line(size =  1.3) + 
+  facet_wrap(~metric, scales = "free") +
+  scale_color_manual(values = set.my.colors(2))
+
+  
+######
+north.trackAntigenic = read.outputfiles(north.output.folder, type = "/out.trackAntigenSeries.txt")
+
+desired.metrics = c("northS", "northI", "antigenicDiversity", "diversity")
+
+north.timeseries %>%
+  filter(.id == "north3" | .id == "north4" | .id == "north1")%>%
+  gather(key = metric, value = value, -.id, -date) %>%
+  filter(metric == desired.metrics) %>%
+  ggplot(aes(x = date, y = value, color = .id)) + geom_line() + facet_wrap(~metric, scales = "free")
+
+north.trackAntigenic %>%
+  mutate(north.type = ifelse(.id %in% desired.trials, "correct.run", "incorrect.run")) %>%
+  gather(key = metric, value = value, -day, -.id, -north.type) %>%
+  group_by(day, metric, north.type) %>%
+  summarize(average = mean(value),
+            sd = sd(value)) %>%
+  head()
+  ggplot(aes(x = day, y = average, color = north.type, group = north.type)) + geom_line(size =  1.3) + 
+  facet_wrap(~metric, scales = "free") +
+  scale_color_manual(values = set.my.colors(2))
+  
+  
+  north.lifespans <- calculate.life.spans(ant.freq.success.l)
+  north.lifespans %>%
+    ggplot(aes(years)) + geom_histogram(bins = 20)
