@@ -65,8 +65,8 @@ public class HostPopulation {
                                 Virus v = new Virus(Parameters.urVirus, deme);
                                 Phenotype p = new MutLoadPhenotype(theta);
                                 v.setPhenotype(p);
-                                Host h = new Host(v);
-				getInfecteds().add(h);
+                                Host h = new Host(v);    //             
+                                infecteds.add(h); // getInfecteds().add(h); MODIFIED 
 			}	
 		
 		}
@@ -96,7 +96,7 @@ public class HostPopulation {
         					susceptibles.add(h);	
         				}
         				else {
-        					getInfecteds().add(h);
+        					infecteds.add(h); //getInfecteds().add(h); // infecteds.add(h); ORIGINAL
         				}
         			}
     			}
@@ -113,13 +113,14 @@ public class HostPopulation {
 	
 	// accessors
 	public int getN() {
-		return susceptibles.size() + getInfecteds().size() + recovereds.size();
+		//return susceptibles.size() + getInfecteds().size() + recovereds.size();
+		return susceptibles.size() + infecteds.size() + recovereds.size(); //ORIGINAL
 	}
 	public int getS() {
 		return susceptibles.size();
 	}
 	public int getI() {
-		return getInfecteds().size();
+		return  infecteds.size(); //getInfecteds().size(); // ORIGINAL
 	}
 	public int getR() {
 		return recovereds.size();
@@ -170,7 +171,8 @@ public class HostPopulation {
 		Host h = null;
 		if (getI() > 0) {
 			int index = Random.nextInt(0,getI()-1);
-			h = getInfecteds().get(index);
+			h = infecteds.get(index); // Original 
+			//h = getInfecteds().get(index); // h = infecteds.get(index); ORIGINAL
 		}
 		return h;
 	}
@@ -230,7 +232,8 @@ public class HostPopulation {
             if (infections > 0) {
                 int totalLoad = 0;
                 for (int i = 0; i < infections; i++) {
-                    Host h = getInfecteds().get(i);
+                	Host h = infecteds.get(i); 
+                    //Host h = getInfecteds().get(i); Modified 
                     Virus v = h.getInfection(); 
                     Phenotype p = v.getPhenotype();
                     totalLoad += p.mutLoad();
@@ -272,8 +275,9 @@ public class HostPopulation {
             boolean logValues = true;
             
             for (int i = 0; i < infections; i++) {
-                
-                Host h = getInfecteds().get(i);
+            	
+                Host h = infecteds.get(i); // ORIGINAL
+               // Host h = getInfecteds().get(i); Modified  
                 Virus v = h.getInfection();
                 Phenotype p = v.getPhenotype();
                 
@@ -437,8 +441,8 @@ public class HostPopulation {
             boolean logValues = true;
             
             for (int i = 0; i < infections; i++) {
-                
-                Host h = getInfecteds().get(i);
+            	Host h = infecteds.get(i); // ORIGINAL
+                //Host h = getInfecteds().get(i); MODIFIED 
                 Virus v = h.getInfection();
                 Phenotype p = v.getPhenotype();
                 
@@ -529,7 +533,8 @@ public class HostPopulation {
                     
                     // If the number of host immune histories to sample is greater than the host pop size, loop through each host rather than sampling randomly
                     List<Host> allHosts = new ArrayList<Host>(); //includes S, I, and R hosts
-                    allHosts.addAll(susceptibles); allHosts.addAll(getInfecteds()); allHosts.addAll(recovereds);
+                    //allHosts.addAll(susceptibles); allHosts.addAll(getInfecteds()); allHosts.addAll(recovereds); Modified 
+                    allHosts.addAll(susceptibles); allHosts.addAll(infecteds); allHosts.addAll(recovereds);// ORIGINAL
                     double sumTypeImmunity = 0;
                     for (int s = 0; s < allHosts.size(); s++) {
                         Host sH = allHosts.get(s);
@@ -630,7 +635,8 @@ public class HostPopulation {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
                 for (int i = 0; i < getI(); i++) { // for how many infecteds
-                    Host h = getInfecteds().get(i); // get infected
+                	Host h = infecteds.get(i); //ORIGINAL
+                   // Host h = getInfecteds().get(i); Modified 
                     Virus v = h.getInfection(); // get virus
                     Phenotype p = v.getPhenotype(); // get phenotype of virus
                     int type = p.antigenicType(); // get antigenic type of virus
@@ -647,7 +653,8 @@ public class HostPopulation {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
                 for (int i = 0; i < getI(); i++) {
-                    Host h = getInfecteds().get(i);
+                	Host h = infecteds.get(i); // ORIGINAL
+                    //Host h = getInfecteds().get(i);  MODIFIED 
                     Virus v = h.getInfection();
                     Phenotype p = v.getPhenotype();
                     int type = p.antigenicType();

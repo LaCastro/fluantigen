@@ -230,3 +230,13 @@ calculate.total.life <- function(antigen.frequencies) {
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
     select(antigentype, life.length)
 }
+
+# calculating the annual incidence rate
+calculate.annual.attack <- function(timeseries) {
+  pop.size = 40000000
+  north.timeseries %>%
+    group_by(.id) %>%
+    select(date, totalCases) %>%
+    filter(date %% 1 == 0)
+  
+}

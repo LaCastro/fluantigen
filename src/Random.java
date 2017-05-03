@@ -3,6 +3,7 @@
 /* Completely static class, allows no instances to be instantiated */
 
 //import cern.jet.random.*;
+import java.util.*; // ORIGINAL
 
 public class Random {
 								

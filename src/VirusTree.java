@@ -8,10 +8,10 @@ import cern.colt.list.DoubleArrayList;
 public class VirusTree {
 
 	// fields
-	public static Virus root = Parameters.urVirus;	// editing to make public
-	public static List<Virus> tips = new ArrayList<Virus>(); // editing to make public
+	private static Virus root = Parameters.urVirus;	// editing to make public
+	private static List<Virus> tips = new ArrayList<Virus>(); // editing to make public
         
-    public static ArrayList<Virus> samples; //making public
+    private static ArrayList<Virus> samples; //making public
 	
 	public static double xMin;
 	public static double xMax;

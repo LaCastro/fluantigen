@@ -20,8 +20,8 @@ public class Parameters {
 	public static int endDay = 5000; 
 	public static int printStep = 10;									// print to out.timeseries every week
 	public static int tipSamplingStartDay = 0;
-        public static int tipSamplingEndDay = 0;
-        public static double tipSamplingRate = 0.0002;						// in samples per deme per day
+    public static int tipSamplingEndDay = 0;
+    public static double tipSamplingRate = 0.0002;						// in samples per deme per day
 	public static int tipSamplesPerDeme = 1000;
 	public static boolean tipSamplingProportional = true;				// whether to sample proportional to prevalance
 	public static double treeProportion = 0.1;							// proportion of tips to use in tree reconstruction
