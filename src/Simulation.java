@@ -581,14 +581,15 @@ public class Simulation {
 
 	}
 
-	public void run() {
+	public void run(String dirFileName) {
 
 		try {
 
-			Date now = new Date();
-			SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm-ss");
-			String timeFormat = dateFormat.format(now);
-			time = timeFormat;
+			
+			//Date now = new Date();
+			//SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm-ss");
+			//String timeFormat = dateFormat.format(now);
+			time = dirFileName;
 			File dir = new File(time);
 			dir.mkdir();
 

@@ -11,13 +11,13 @@ class Mutantigen {
 		Parameters.initialize();
 	    
                 
-                // initialize antigenic tree
-                AntigenicTree.initialize();
+		// initialize antigenic tree
+        AntigenicTree.initialize();
                
-		
+		String dirFileName = args[0];
 		// run simulation
 		Simulation sim = new Simulation();
-		sim.run();	
+		sim.run(dirFileName);	
 		
 		
 	}
