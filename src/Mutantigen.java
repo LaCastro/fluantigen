@@ -1,6 +1,6 @@
 /* Implements an individual-based model in which the infection's genealogical history is tracked through time */
 
-class Mutantigen {
+public class Mutantigen {
     public static void main(String[] args) {
 
 		// initialize random number generator

@@ -6,6 +6,7 @@
 
 # Package Files #
 *.jar
+!trackAntigen.jar
 
 
 #outfiles
