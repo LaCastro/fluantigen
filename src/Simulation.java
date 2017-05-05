@@ -581,7 +581,7 @@ public class Simulation {
 
 	}
 
-	public void run(String dirFileName) {
+	public void run(String dirFileName, String dirMainOutput) {
 
 		try {
 
@@ -589,9 +589,10 @@ public class Simulation {
 			//Date now = new Date();
 			//SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy_hh-mm-ss");
 			//String timeFormat = dateFormat.format(now);
-			time = dirFileName;
-			File dir = new File(time);
-			dir.mkdir();
+			time = dirMainOutput + "/" + dirFileName;
+			//time = dirFileName;
+			new File(time).mkdirs();
+			//dir.mkdir();
 
 			System.setOut(new PrintStream(new FileOutputStream(time.concat("/out.console.txt"))));
 

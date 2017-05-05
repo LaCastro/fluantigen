@@ -123,17 +123,17 @@ public class Parameters {
 	}
 	
 	// load parameters.yml	
-	public static void load() {
+	public static void load(String parametersFile) {
 		
 		try {
 		
 			org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml();
 			Map map = null;			
-			InputStream input = new FileInputStream(new File("parameters_load.yml"));
+			InputStream input = new FileInputStream(new File(parametersFile));
 			map = (Map) yaml.load(input);
 			input.close();
 			
-			System.out.println("Loading parameters from parameters.yml: a success");
+			System.out.println("Loading parameters from " + parametersFile + ": a success");
  
                         
                         burnin = toInteger(map.get("burnin")); //burnin = (int) map.get("burnin");

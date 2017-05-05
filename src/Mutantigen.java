@@ -6,8 +6,9 @@ public class Mutantigen {
 		// initialize random number generator
 		cern.jet.random.AbstractDistribution.makeDefaultGenerator();
 		
+		String parametersFile = args[1];
 		// initialize static parameters
-		Parameters.load();		
+		Parameters.load(parametersFile);		
 		Parameters.initialize();
 	    
                 
@@ -15,9 +16,10 @@ public class Mutantigen {
         AntigenicTree.initialize();
                
 		String dirFileName = args[0];
+		String dirMainOutput = args[2];
 		// run simulation
 		Simulation sim = new Simulation();
-		sim.run(dirFileName);	
+		sim.run(dirFileName, dirMainOutput);	
 		
 		
 	}
