@@ -13,7 +13,7 @@
 # 
 #------------------Scheduler Options--------------------
 #SBATCH -J tropics_intial10          # Job name
-#SBATCH -N 2                    # Total number of nodes (16 cores/node)
+#SBATCH -N 4                   # Total number of nodes (16 cores/node)
 #SBATCH -n 12                  # Total number of tasks
 #SBATCH -p normal          # Queue name
 #SBATCH -o out_tropics.o%j      # Name of stdout output file (%j expands to jobid)

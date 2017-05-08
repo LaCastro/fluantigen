@@ -1,3 +1,6 @@
+rm(list=ls())
+
+
 #####
 library(plyr)
 library(tidyverse)
@@ -95,7 +98,7 @@ save_plot(trial, filename = paste0(exploratory.figures, "trial5.pdf"), base_heig
 
 meanLoad = plot_grid(meanLoad.correct, meanLoad.incorrect)
 meanR = plot_grid(meanR.correct, meanR.incorrect)
- = plot_grid(meanSigma.correct, meanSigma.incorrect)
+
 antigenicTypes = plot_grid(antigenicTypes.correct, antigenicTypes.incorrect)
 susceptibility = plot_grid(susceptibility.correct, susceptibility.incorrect)
 popdynamics  = plot_grid(pop.dynamics.correct, pop.dynamics.incorrect)
@@ -181,12 +184,14 @@ output.folder = "~/Dropbox/Projects/mutantigen/north/"
 output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
 
 
+trial.data <- read.table(file = "../data/tropics_trial/out.timeseries.txt", header = TRUE)
+ggplot(trial.data, aes(x = date, y = totalI*.0025)) + geom_line()
 
 #Read and combine files 
 emergence.data = create.meta.data.all(dir = output.folder)
 emergence.data.N = create.meta.data.all(dir = "~/Dropbox/Projects/mutantigen/north/")
 antigen.frequencies <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
-
+antigen.frequencies <- read.table("../data/tropics_11/out.antigenFrequencies.txt", header = TRUE)
 
 emergence.data.N %>%
   select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
@@ -202,7 +207,7 @@ antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant
 
 exploratory.figures = "../analysis/exploratory.figs/"
 
-ggplot(aes(x = life.length, y = final.max, color = success))
+
 
 emergence.data %>% 
   select(life.length, final.max, success) %>%
@@ -348,11 +353,12 @@ lifespans %>%
   
 
 ant.freq.success.l %>%
+antigen.freq.long %>%
   mutate(year = day/365) %>%
   filter(frequency > 0) %>%
   ggplot(aes(x = year, y = frequency, fill = antigentype)) +
   geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id) +
+  #facet_wrap(~.id) +
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
@@ -362,12 +368,13 @@ save_plot(filename = paste0(exploratory.figures, "freq.plotT.pdf"), freq.plot.tr
           base_height = 8, base_aspect_ratio = 1.5)
   
 ant.freq.success.l %>%
+antigen.freq.long %>%  
   mutate(year = day/365) %>%
   mutate( prevalence = infected*frequency) %>%
   filter(prevalence > 0) %>%
   ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
   geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id, scales = "free_y") +
+  #facet_wrap(~.id, scales = "free_y") +
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +

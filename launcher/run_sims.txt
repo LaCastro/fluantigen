@@ -1,12 +1,12 @@
-java -jar trackAntigen17.jar tropics_1 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_2 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_3 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_4 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_5 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_6 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_7 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_8 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_9 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_10 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_11 -XX:+UseSerialGC -Xmx5G Mutantigen
-java -jar trackAntigen17.jar tropics_12 -XX:+UseSerialGC -Xmx5G Mutantigen
+java -jar trackAntigen.jar tropics_1 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_2 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_3 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_4 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_5 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_6 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_7 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_8 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_9 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_10 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_11 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_12 parameters_tropics.yml data -XX:+UseSerialGC Mutantigen

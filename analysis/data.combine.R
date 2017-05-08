@@ -22,7 +22,7 @@ antigenic.mutations = antigenic.mutations[1:(nrow(antigenic.mutations)-2),]
 
 #### Turn this into a big function 
 north = create.meta.data.all(dir = output.folder)
-
+trial.data = create.meta.data(sim.dir = "../data/tropics_11")
 
 novel.types = find.antigen.emergence(antigenic.mutations)
 track.antigen <- read.table(paste0(output.folder, "out.trackAntigenSeries.txt"), header = TRUE)

@@ -7,6 +7,7 @@ public class Mutantigen {
 		cern.jet.random.AbstractDistribution.makeDefaultGenerator();
 		
 		String parametersFile = args[1];
+		System.out.println(parametersFile);
 		// initialize static parameters
 		Parameters.load(parametersFile);		
 		Parameters.initialize();
@@ -17,6 +18,7 @@ public class Mutantigen {
                
 		String dirFileName = args[0];
 		String dirMainOutput = args[2];
+
 		// run simulation
 		Simulation sim = new Simulation();
 		sim.run(dirFileName, dirMainOutput);	
