@@ -1,6 +1,4 @@
 rm(list=ls())
-
-
 #####
 library(plyr)
 library(tidyverse)
@@ -12,302 +10,61 @@ library(data.table)
 library(RColorBrewer)
 library(broom)
 
-
 source('analysis_functions.R')
 source('plotting_functions.R')
 
-### Timeseries
-tropics.output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
-north.output.folder = "~/Dropbox/Projects/mutantigen/north/"
-
-#create combined meta data for each entry of list 
-timeseries.all = read.outputfiles(output.folder, "/out.timeseries.txt")
-north.timeseries = read.outputfiles(north.output.folder, "/out.timeseries.txt")
-north.viralfitness = read.outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
-
-north.track.antigen = read.outputfiles(north.output.folder, "/out.trackAntigenSeries.txt")
-north.track.fitness = read.outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
-total.timeseries = rbind(efi.timeseries.0, efi.timeseries.100, efi.timeseries.300, efi.timeseries.400, north.timeseries, idcol = "source")
-
-total.timeseries %>%
-  gather(key = metric, value = value, -.id, -date, -source) %>%
-  filter(metric == "totalS") %>%
-  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
-  geom_line(size = 1.5)+
-  facet_wrap(~source) +
-  guides(color = FALSE)
-
-
-
-correct.trials = c("north1", "north12", "north14", "north16", "north2", "north8")
-incorrect.trials = c("north3", "north4", "north5", "north6", "north7", "north9",
-                     "north10", "north11", "north13", "north15", "north17", 
-                     "north18", "north19", "north20")
-
-
-
-display <- function(correct.sample, incorrect.sample) { 
-  north.timeseries %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
-    gather(key = metric, value = value, -.id, -date, -trial.type) %>%
-    filter((metric == "northS" | metric == "northI") & (.id == correct.sample | .id == incorrect.sample)) %>%
-    ggplot(aes(x = date, y = value/100000)) +
-    geom_line(size = 1.5) +
-    facet_grid(metric~trial.type, scales = "free") +
-    ylab(label = "Number (per 100K)") + 
-    theme(strip.text.x = element_text(size = 8)) +
-    theme(strip.text.y = element_text(size = 6)) -> pop.dynamics
-    
-  desired.antigenic.metrics = c("antigenicTypes", "meanLoad", "diversity", "antigenicDiversity")
-  
-  north.track.antigen %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
-    gather(key = metric, value = value, -.id, -day, -trial.type) %>%
-    filter(metric %in% desired.antigenic.metrics  & (.id == correct.sample | .id == incorrect.sample)) %>%
-    ggplot(aes(x = day/365, y = value)) +
-    geom_smooth(size = 1.5) +
-    geom_line()+
-    scale_x_continuous(limits = c(0,10), breaks  = seq(from = 0, to = 10, by = 1)) + 
-    facet_grid(metric~trial.type, scales = "free") +
-    theme(strip.text.x = element_text(size = 8)) +
-    theme(strip.text.y = element_text(size = 6))  -> antigenic.dynamics
-  
-  desired.fitness.metrics = c("meanR", "meanBeta")
-
-  north.track.fitness %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
-    gather(key = metric, value = value, -.id, -day, -trial.type) %>%
-    filter(metric %in% desired.fitness.metrics & (.id == correct.sample | .id == incorrect.sample)) %>%
-    ggplot(aes(x = day/365, y = value)) +
-    geom_smooth(size = 1.5)+
-    geom_line(size = 1.5) +
-    facet_grid(metric~trial.type, scales = "free") +
-    theme(strip.text.x = element_text(size = 8)) +
-    theme(strip.text.y = element_text(size = 6)) -> fitness.dynamics
-
-  
-  plot_grid(pop.dynamics, antigenic.dynamics, fitness.dynamics, ncol = 1, rel_heights = c(.9, 1.3, 1))
-}
-
-
-correct.sample = sample(correct.trials, 1)
-incorrect.sample = sample(incorrect.trials, 1)
-trial <- display(correct.sample, incorrect.sample)
-save_plot(trial, filename = paste0(exploratory.figures, "trial5.pdf"), base_height = 8)
-
-
-meanLoad = plot_grid(meanLoad.correct, meanLoad.incorrect)
-meanR = plot_grid(meanR.correct, meanR.incorrect)
-
-antigenicTypes = plot_grid(antigenicTypes.correct, antigenicTypes.incorrect)
-susceptibility = plot_grid(susceptibility.correct, susceptibility.incorrect)
-popdynamics  = plot_grid(pop.dynamics.correct, pop.dynamics.incorrect)
-
-
-north.track.fitness %>%
-  mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
-  gather(key = metric, value = value, -.id, -day, -trial.type) -> north.fitness.l
-north.track.antigen %>%
-  mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
-  gather(key = metric, value = value, -.id, -day, -trial.type) -> north.antigen.l
-
-north.factors = rbind(north.fitness.l, north.antigen.l)
-head(north.factors)
-  
-
-desired.trials = c("north1", "north2", "north8", "north12")
-
-north.timeseries %>%
-  gather(key = metric, value = value, -.id, -date) %>%
-  filter(metric == "northI" & .id %in% desired.trials) %>%
-  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
-  geom_line()+
-  scale_color_manual(values = set.my.colors(4))
-  
-
-my.colors = set.my.colors(10)
-
-timeseries.all %>%
-  gather(key = metric, value = value, -.id, -date) %>%
-  filter(metric %in% desired.metrics) %>%
-  ggplot(aes(x = date, y = value, group = .id, color = .id)) +
-  geom_smooth() +
-  scale_color_manual(values = my.colors)+
-  facet_wrap(~metric, scales = "free")
-
-
-timeseries.all %>%
-  group_by(.id) %>%
-  mutate(years = (seq(from = 10, to = 3650, by = 10))/365) %>%
-  ungroup() %>%
-  group_by(years) %>%
-  summarize(mean.diversity = mean(diversity),
-            mean.antiDiversity = mean(antigenicDiversity), 
-            mean.IS = mean(totalI/totalS),
-            mean.tmrca = mean(tmrca),
-            cases.per100k = mean(totalI)/100000) %>%
-  gather(key = metric, value = value, -years) %>%
-  mutate(region = "tropics") -> tropics.timeseries.long
-
-
-north.timeseries %>%
-  group_by(.id) %>%
-  filter(.id %in% desired.trials) %>%
-  mutate(years = (seq(from = 10, to = 3650, by = 10))/365) %>%
-  ungroup() %>%
-  group_by(years) %>%
-  summarize(mean.diversity = mean(diversity),
-            mean.antiDiversity = mean(antigenicDiversity), 
-            mean.IS = mean(totalI/totalS),
-            mean.tmrca = mean(tmrca),
-            cases.per100k = mean(totalI)/100000) %>%
-  gather(key = metric, value = value, -years) %>%
-  mutate(region = "north") -> north.timeseries.long
-
-
-
-
-
-
-timeseries.long = rbind(tropics.timeseries.long, north.timeseries.long)
-
-timeseries.long %>%
-  ggplot(aes(x = years, y = value, color = region)) + 
-  geom_line()  + facet_wrap(~metric, scales = "free")
-  
-###### Would also have to read in viral fitness here to see what's going on 
-
 
 ########## Antigen Frequencies START HERE 
-source('analysis_functions.R')
-output.folder = "~/Dropbox/Projects/mutantigen/north/"
-output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
-
-
-trial.data <- read.table(file = "../data/tropics_trial/out.timeseries.txt", header = TRUE)
-ggplot(trial.data, aes(x = date, y = totalI*.0025)) + geom_line()
-
-#Read and combine files 
-emergence.data = create.meta.data.all(dir = output.folder)
-emergence.data.N = create.meta.data.all(dir = "~/Dropbox/Projects/mutantigen/north/")
-antigen.frequencies <- read.outputfiles(output.folder, "/out.antigenFrequencies.txt")
-antigen.frequencies <- read.table("../data/tropics_11/out.antigenFrequencies.txt", header = TRUE)
-
-emergence.data.N %>%
-  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
-  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
-  filter(metric %in% antigen.specific.metrics) -> Nemergence.antigenspecific.l
-Nemergence.antigenspecific.l$value = as.numeric(Nemergence.antigenspecific.l$value)
-
-emergence.data.l = rbind(emergence.antigenspecific.l,  Nemergence.antigenspecific.l)
-tail(emergence.data.l)
-#######
-
-antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
+tropics.folder = "../data/tropics/"
+north.folder = "../data/north/"
 
 exploratory.figures = "../analysis/exploratory.figs/"
 
+## Single Geo Analysis 
+#Read and combine files 
+antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
 
 
-emergence.data %>% 
-  select(life.length, final.max, success) %>%
-  ggplot(aes(x = life.length, y = final.max, color = success)) + geom_point() + 
-  scale_color_manual(values = c("purple", "orange")) + geom_vline(xintercept = 180) + geom_hline(yintercept = .1)
+tropics.data = create.meta.data.all(dir = tropics.folder)
+tropics.antigen.frequencies <- read.outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
 
 
-emergence.data %>%
+tropics.data %>%
   select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
-  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
-  filter(metric %in% antigen.specific.metrics) -> emergence.antigenspecific.l
-emergence.antigenspecific.l$value = as.numeric(emergence.antigenspecific.l$value)
+  gather(key = metric, value = value,
+         -final.max, -life.length, -success, -postAntigen) -> data.l
+data.l$value = as.numeric(data.l$value)
 
-emergence.antigenspecific.l %>%
-  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
-  facet_wrap(~metric, scales = "free_x") +
-  scale_color_manual(values = c("purple", "orange")) -> scatter.antigenspecific.plot
-save_plot(scatter.antigenspecific.plot, filename = paste0(exploratory.figures, "T.freq.scatter.antigenspecific.pdf"),base_height = 8,  base_aspect_ratio = 1.8)
-
-emergence.antigenspecific.l %>%
-  ggplot(aes(value, fill = success, color = success)) + 
-  geom_density(alpha = .5) + 
-  facet_wrap(~metric, scales = "free") +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_fill_manual(values = c("purple", "orange")) +
-  theme(axis.text.x = element_text(size = 8)) -> antigenspecific.density
-save_plot(antigenspecific.density, filename = paste0(exploratory.figures, "Tantigenspecific.density.pdf"), 
+Tropics.ant.density = plot_metric_density(data.l = data.l, metrics = antigen.specific.metrics)
+save_plot(antigenspecific.density, 
+          filename = "../analysis/exploratory.figs/Tantigenspecific.density.pdf", 
           base_height = 8, base_aspect_ratio = 2)
 
-
 pop.dynamics <- c("S", "I")
-
-emergence.data %>%
-  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
-  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
-  filter(metric %in% pop.dynamics) -> emergence.popdynamics.l
-emergence.popdynamics.l$value = as.numeric(emergence.popdynamics.l$value)
-emergence.popdynamics.l %>%
-  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
-  facet_wrap(~metric, scales = "free_x") +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_x_continuous(labels = fancy_scientific) -> scatter.popdynamics.plot
-save_plot(scatter.popdynamics.plot, filename = paste0(exploratory.figures, "Tlife.scatter.popdynamics.pdf"), base_aspect_ratio = 1.8)
-
-
-emergence.popdynamics.l %>%
-  ggplot(aes(value, fill = success, color = success)) + 
-  geom_density(alpha = .5) + 
-  facet_wrap(~metric, scales = "free_x") +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_fill_manual(values = c("purple", "orange")) +
-  scale_x_continuous(labels = fancy_scientific) +
-  theme(axis.text.x = element_text(size = 8)) -> pop.dynamics.density
-save_plot(pop.dynamics.density, filename = paste0(exploratory.figures, "Tpop.dynamics.density.pdf"), base_aspect_ratio = 2)
-                                                                     
-
+Tropics.pop.dynamics.density <- plot_metric_density(data.l, pop.dynamics)
 
 
 viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
 
-emergence.data %>%
-  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
-  gather(key = metric, value = value, -final.max, -life.length, -success, -postAntigen) %>%
-  filter(metric %in% viral.fitness.metrics) -> emergence.viral.fitness.l
-emergence.viral.fitness.l$value = as.numeric(emergence.viral.fitness.l$value)
-
 emergence.viral.fitness.l %>%
-  ggplot(aes(x = value, y = life.length, color = success)) + geom_point(alpha = .5) + 
-  facet_wrap(~metric, scales = "free_x") +
-  scale_color_manual(values = c("purple", "orange")) -> scatter.viral.fitness.plot
-save_plot(scatter.viral.fitness.plot, filename = paste0(exploratory.figures, "Tlife.scatter.viral.fitness.pdf"),base_height = 8,  base_aspect_ratio = 1.8)
-
-
-emergence.viral.fitness.l %>%
-  ggplot(aes(value, fill = success, color = success)) + geom_density(alpha = .5) + 
-  facet_wrap(~metric, scales = "free") +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_fill_manual(values = c("purple", "orange")) +
-  theme(axis.text.x = element_text(size = 8)) -> density.viral.fitness
-save_plot(density.viral.fitness, filename = paste0(exploratory.figures, "Tviralfitness.density.pdf"), base_height = 8, base_aspect_ratio = 1.5)
-
-
-emergence.antigen.metrics.l$value = as.numeric(emergence.antigen.metrics.l$value)
-
-
-
+viral.fitness.density  = plot_metric_density(data.l, viral.fitness.metrics)
+save_plot(viral.fitness.density, 
+          filename = "../analysis/exploratory.figs/Tviralfitness.density.pdf", 
+          base_height = 8, base_aspect_ratio = 1.5)
 
 
 ######### Successful  Dynamics 
-emergence.data %>%
+tropics.data %>%
   group_by(.id) %>%
   filter(success == "yes") %>%
   select(.id, postAntigen) -> success.types
 
-### For each successtype, go into antigen frequecny all, filter and full out
+### For each successtype, go into antigen frequency all, filter and full out
 ##### Read in the antigen frequencies and then store those in a list 
 antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
   successful.types = sim$postAntigen 
   successful.types = c(0, successful.types)
-  antigen.freq.all %>%
+  tropics.antigen.frequencies %>%
     filter(.id == sim$.id[1]) %>%
     filter(antigentype %in% successful.types) -> antigen.freq.sim
   return(antigen.freq.sim)
@@ -335,53 +92,201 @@ ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", 
 ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
 
 ## Need to first go in and fill all the missing values and then combine
-# Plot Frequency First 
-desired.trials = c("north1", "north12", "north14", "north2", "north16")
-
-ant.freq.success.l %>%
-  filter(.id %in% desired.trials) -> ant.freq.success.l
 
 # Calculate life spans
-north.life.spans = calculate.life.spans(ant.freq.success.l)
-tropics.life.spans = calculate.life.spans(ant.freq.success.l) 
-lifespans = bind_rows(north.life.spans, tropics.life.spans, .id = "id")
+tropics.life.spans = calculate.life.spans.success(ant.freq.success.l) 
 
-lifespans %>%
-  ggplot(aes(years, color = id, fill = id)) + geom_density(alpha = .5) + 
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_fill_manual(values = c("purple", "orange"))
+tropics.life.spans %>%
+  ggplot(aes(years)) +
+  facet_wrap(~.id)+
+  geom_histogram(binwidth = 1)
   
 
+all.lifespans = calculate.total.life(tropics.antigen.frequencies)
+# Designate which ones are successful 
+all.lifespans.df = ddply(.data = success.types, .variables = ".id", function(sim) {
+  successful.types = sim$postAntigen 
+  successful.types = c(0, successful.types)
+  all.lifespans %>%
+    filter(.id == sim$.id[1]) %>%
+    mutate(success = ifelse(antigentype %in% successful.types, "yes", "no")) -> all.lifespans
+  return(all.lifespans)
+})
+
+all.lifespans.df %>%
+  ggplot(aes(life.length/365))+
+  facet_wrap(~success, scales = "free") + 
+  geom_histogram(bins = 10) -> life.span.histogram
+save_plot(filename = "../analysis/exploratory.figs/life.span.hist.pdf",
+          life.span.histogram, base_aspect_ratio = 1.5)
+
+
 ant.freq.success.l %>%
-antigen.freq.long %>%
   mutate(year = day/365) %>%
   filter(frequency > 0) %>%
   ggplot(aes(x = year, y = frequency, fill = antigentype)) +
   geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  #facet_wrap(~.id) +
+  facet_wrap(~.id) +
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.north
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
 
-save_plot(filename = paste0(exploratory.figures, "freq.plotT.pdf"), freq.plot.tropics,
+save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
+          freq.plot.tropics,
           base_height = 8, base_aspect_ratio = 1.5)
   
 ant.freq.success.l %>%
-antigen.freq.long %>%  
   mutate(year = day/365) %>%
-  mutate( prevalence = infected*frequency) %>%
+  mutate(prevalence = infected*frequency*.0025) %>%
   filter(prevalence > 0) %>%
   ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
   geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  #facet_wrap(~.id, scales = "free_y") +
+  facet_wrap(~.id, scales = "free_y") +
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> prev.plot.north
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
 
-save_plot(filename = paste0(exploratory.figures, "prev.plotT.pdf"), prev.plot.tropics,
+save_plot(filename = "../analysis/exploratory.figs/prev.plotT.pdf", 
+          prev.tropics.plot,
           base_height = 8, base_aspect_ratio = 1.5)
+
+
+### NORTH 
+north.data = create.meta.data.all(dir = north.output.folder)
+
+north.antigen.frequencies <- read.outputfiles(north.output.folder, 
+                                              "/out.antigenFrequencies.txt")
+
+north.data %>%
+  filter(.id %in% correct.trial) %>%
+  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  gather(key = metric, value = value,
+         -final.max, -life.length, -success, -postAntigen) -> data.l
+data.l$value = as.numeric(data.l$value)
+
+Tropics.ant.density = plot_metric_density(data.l = data.l, metrics = antigen.specific.metrics)
+save_plot(antigenspecific.density, 
+          filename = "../analysis/exploratory.figs/Tantigenspecific.density.pdf", 
+          base_height = 8, base_aspect_ratio = 2)
+
+pop.dynamics <- c("S", "I")
+Tropics.pop.dynamics.density <- plot_metric_density(data.l, pop.dynamics)
+
+
+viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
+
+emergence.viral.fitness.l %>%
+  viral.fitness.density  = plot_metric_density(data.l, viral.fitness.metrics)
+save_plot(viral.fitness.density, 
+          filename = "../analysis/exploratory.figs/Tviralfitness.density.pdf", 
+          base_height = 8, base_aspect_ratio = 1.5)
+
+
+######### Successful  Dynamics 
+tropics.data %>%
+  group_by(.id) %>%
+  filter(success == "yes") %>%
+  select(.id, postAntigen) -> success.types
+
+### For each successtype, go into antigen frequency all, filter and full out
+##### Read in the antigen frequencies and then store those in a list 
+antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
+  successful.types = sim$postAntigen 
+  successful.types = c(0, successful.types)
+  tropics.antigen.frequencies %>%
+    filter(.id == sim$.id[1]) %>%
+    filter(antigentype %in% successful.types) -> antigen.freq.sim
+  return(antigen.freq.sim)
+})
+
+
+
+#Determine the maximum number of colors going to need 
+antigen.freq.success.df %>%
+  group_by(.id) %>%
+  summarize(num.transitions = n_distinct(antigentype)) -> num.transitions
+max.color = sum(num.transitions$num.transitions)
+myColors = set.my.colors(max.color)
+
+
+## Need to first go in and fill all the missing values and then combine
+ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", function(sim) {
+  sim %>%
+    distinct(day, antigentype, .keep_all = TRUE) %>%
+    spread(key = antigentype, value = frequency, fill = 0) %>%
+    gather(key = antigentype, value = frequency, -1, -2, - infected)  -> antigen.freq.long
+  return(antigen.freq.long)
+})
+
+ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
+
+## Need to first go in and fill all the missing values and then combine
+
+# Calculate life spans
+tropics.life.spans = calculate.life.spans.success(ant.freq.success.l) 
+
+tropics.life.spans %>%
+  ggplot(aes(years)) +
+  facet_wrap(~.id)+
+  geom_histogram(binwidth = 1)
+
+
+all.lifespans = calculate.total.life(tropics.antigen.frequencies)
+# Designate which ones are successful 
+all.lifespans.df = ddply(.data = success.types, .variables = ".id", function(sim) {
+  successful.types = sim$postAntigen 
+  successful.types = c(0, successful.types)
+  all.lifespans %>%
+    filter(.id == sim$.id[1]) %>%
+    mutate(success = ifelse(antigentype %in% successful.types, "yes", "no")) -> all.lifespans
+  return(all.lifespans)
+})
+
+all.lifespans.df %>%
+  ggplot(aes(life.length/365))+
+  facet_wrap(~success, scales = "free") + 
+  geom_histogram(bins = 10) -> life.span.histogram
+save_plot(filename = "../analysis/exploratory.figs/life.span.hist.pdf",
+          life.span.histogram, base_aspect_ratio = 1.5)
+
+
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  filter(frequency > 0) %>%
+  ggplot(aes(x = year, y = frequency, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id) +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
+
+save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
+          freq.plot.tropics,
+          base_height = 8, base_aspect_ratio = 1.5)
+
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  mutate(prevalence = infected*frequency*.0025) %>%
+  filter(prevalence > 0) %>%
+  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id, scales = "free_y") +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
+
+save_plot(filename = "../analysis/exploratory.figs/prev.plotT.pdf", 
+          prev.tropics.plot,
+          base_height = 8, base_aspect_ratio = 1.5)
+
+
+
+
+
 
 
 

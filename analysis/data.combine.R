@@ -10,19 +10,17 @@ library(reshape2)
 library(data.table)
 library(RColorBrewer)
 
-
 output.folder = "../04-05-2017_09-25-21/"
-output.folder = "~/Dropbox/Projects/mutantigen/tropics/"
+output.folder = "../data/tropics/"
 output.folder = "~/Dropbox/Projects/mutantigen/north/"
 
-antigenic.mutations = read.table(paste0(output.folder, "out.console.txt"), header = TRUE, fill = TRUE)
+#antigenic.mutations = read.table(paste0(output.folder, "out.console.txt"), header = TRUE, fill = TRUE)
 antigenic.mutations = antigenic.mutations[1:(nrow(antigenic.mutations)-2),]
 
 ### now need to find NA
 
 #### Turn this into a big function 
-north = create.meta.data.all(dir = output.folder)
-trial.data = create.meta.data(sim.dir = "../data/tropics_11")
+tropics = create.meta.data.all(dir = output.folder)
 
 novel.types = find.antigen.emergence(antigenic.mutations)
 track.antigen <- read.table(paste0(output.folder, "out.trackAntigenSeries.txt"), header = TRUE)

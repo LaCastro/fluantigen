@@ -1,8 +1,5 @@
 ###### Functions
 
-
-
-
 read.outputfiles <- function(dir, type ) {
   file.list = list.dirs(dir, full.names = FALSE, recursive = FALSE)
   population.data <- lapply(file.list, function(.file) {
@@ -22,7 +19,7 @@ read.console.files <- function(dir) {
     output.file <- read.table(paste0(dir,.file, "/out.console.txt"), header = TRUE, fill = TRUE)
     # Clean console file here 
     output.file = clean.console(output.file)
-    output.file
+    return(output.file)
   })
   names(population.data) = file.list
   #population.data = rbindlist(population.data, idcol = TRUE)
@@ -31,19 +28,21 @@ read.console.files <- function(dir) {
 
 
 clean.console <- function(console.file) {
+  output.file = console.file[1:(nrow(console.file)-2), ]
   na.rows = output.file[is.na(output.file$postAntigen),]
   na.indicies = which(is.na(output.file$postAntigen))
-  modified.rows = output.file[na.indices-1,]
-  
-  for(i in 1:length(na.indices)) {
-    index = na.indices[i]
-    output.file[index, 2:6] = unname(na.rows[i,1:5])
-    output.file[index, 1] = modified.rows[i,6]
-    distance =  na.rows[i, 3]
-    output.file[index, 4] = as.character(distance)
-    output.file[index, 1] = modified.rows[i,6]
+  modified.rows = output.file[na.indicies-1,]
+  if (length(na.indicies)>0) {
+    for(i in 1:length(na.indicies)) {
+      index = na.indicies[i]
+      output.file[index, 2:6] = unname(na.rows[i,1:5])
+      output.file[index, 1] = modified.rows[i,6]
+      distance =  na.rows[i, 3]
+      output.file[index, 4] = as.character(distance)
+      output.file[index, 1] = modified.rows[i,6]
+    }
+    output.file = output.file[-(na.indicies-1), ]
   }
-  output.file = output.file[-(na.indicies-1), ]
   return(output.file)
 }
 
@@ -99,12 +98,12 @@ fancy_scientific <- function(l) {
 
 
 create.meta.data <- function(sim.dir) {
+  
   ### Combines all the output files for novel antigens
 
   # reading in and cleaning up the console file 
   console.file <- read.table(paste0(sim.dir, "/out.console.txt"), header = TRUE, fill = TRUE)
-  console.file = console.file[1:(nrow(console.file)-2),]
-  
+  console.file = clean.console(console.file) 
   
   # find the time when novel antigens emerge
   novel.types = find.antigen.emergence(console.file)
@@ -112,7 +111,9 @@ create.meta.data <- function(sim.dir) {
   # read in output file that tracks state of simulation when antigens emerge
   track.antigen <- read.table(paste0(sim.dir, "/out.trackAntigenSeries.txt"), header = TRUE)
   track.antigen$day = as.character(track.antigen$day)
+  novel.types$day = as.character(novel.types$day)
   meta.data  = left_join(x = novel.types, y = track.antigen, "day") 
+  meta.data$day = as.character(meta.data$day)
   
   # record the exact days when new novel types are generated 
   days.of.emergence = meta.data$day
@@ -140,16 +141,17 @@ create.meta.data <- function(sim.dir) {
   
   # combine maximum frequency the strain itself ever achieved
   maximum.freq.type <- find.max.frequency(antigen.frequencies)
+  maximum.freq.type$antigentype = as.factor(maximum.freq.type$antigentype)
+  meta.data$postAntigen = as.factor(meta.data$postAntigen)
   meta.data %>% left_join(maximum.freq.type, by = c("postAntigen" = "antigentype")) -> meta.data
   
   life.span <- calculate.total.life(antigen.frequencies)
+  life.span$antigentype = as.character(life.span$antigentype)
   meta.data %>% left_join(life.span, by = c("postAntigen" = "antigentype")) -> meta.data
   # Differentiate whether it was sucessful or not
   #meta.data$success = NA
   #successful.types = find.successful.types(antigen.frequencies, threshold = .1, length = 180)
-  
-  
-  meta.data %>%
+   meta.data %>%
     mutate(success = ifelse((final.max > .1 & life.length > 180), "yes", "no")) -> meta.data
   
   return(meta.data)
@@ -192,7 +194,6 @@ calculate.success.rate <- function(n.unique.antigens, n.success.antigens) {
 antigen.success.summary <- function(threshold.levels, antigen.frequencies) {
   
   n.unique.antigens = count.n.antigens(antigen.frequencies)
-  
   antigen.success.quantile = adply(.data = threshold.levels, .margins = 1, function(thres) {
     success.antigens = count.success.antigens(antigen.frequencies, threshold = thres)
     quantiles = calculate.success.rate(n.unique.antigens, n.success.antigens = success.antigens)
@@ -210,8 +211,6 @@ antigen.success.summary <- function(threshold.levels, antigen.frequencies) {
   return(antigen.success.summary.df)
 }
 
-
-
 calculate.life.spans.success <- function(ant.freq.success.l) {
   ant.freq.success.l %>%
     group_by(.id, antigentype) %>%
@@ -220,16 +219,30 @@ calculate.life.spans.success <- function(ant.freq.success.l) {
     mutate(years = n/365)
 }
 
-calculate.total.life <- function(antigen.frequencies) {
+calculate.total.life.id <- function(antigen.frequencies) {
   antigen.frequencies %>%
-    group_by(antigentype) %>%
+    group_by(.id,antigentype) %>%
     summarize(day.emerge = day[1],
               last.day = tail(day)[6]) -> birth.death.days 
    
   birth.death.days %>% 
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
+    select(.id,antigentype, life.length)
+}
+
+
+calculate.total.life <- function(antigen.frequencies) {
+  antigen.frequencies %>%
+    group_by(antigentype) %>%
+    summarize(day.emerge = day[1],
+              last.day = tail(day)[6]) -> birth.death.days 
+  
+  birth.death.days %>% 
+    mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
     select(antigentype, life.length)
 }
+
+
 
 # calculating the annual incidence rate
 calculate.annual.attack <- function(timeseries) {
@@ -238,5 +251,4 @@ calculate.annual.attack <- function(timeseries) {
     group_by(.id) %>%
     select(date, totalCases) %>%
     filter(date %% 1 == 0)
-  
 }
