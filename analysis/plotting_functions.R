@@ -1,12 +1,12 @@
 ##### Plotting Functions
 
-set.my.colors <- function(length.of.success) {
+set_my_colors <- function(length.of.success) {
   myColors = colorRampPalette(brewer.pal(8, "Accent"))(length.of.success)
   return(myColors)
 }
 
 
-plot.successful.frequency <- function(antigen.frequencies, successful.types) {
+plot_successful_frequency <- function(antigen.frequencies, successful.types) {
   # Plot the frequencies of successful antigens through time 
   myColors <- colorRampPalette(brewer.pal(8, "Accent"))(length(successful.types))
   antigen.frequencies$antigentype = as.factor(antigen.frequencies$antigentype)
@@ -27,7 +27,7 @@ plot.successful.frequency <- function(antigen.frequencies, successful.types) {
 }
 
 
-plot.successful.infections <- function(antigen.frequencies, successful.types) {
+plot_successful_infections <- function(antigen.frequencies, successful.types) {
   # Plot the frequencies of successful antigens through time 
   myColors <- colorRampPalette(brewer.pal(8, "Accent"))(length(successful.types))
   antigen.frequencies$antigentype = as.factor(antigen.frequencies$antigentype)
@@ -61,7 +61,7 @@ plot_metric_density <- function(data.l, metrics) {
   data.l %>%
     filter(metric %in% metrics) %>%
     ggplot(aes(value, fill = success, color = success)) + 
-    geom_density(alpha = .5, adjust  = 3) + 
+    geom_density(alpha = .5, adjust  = 2) + 
     facet_wrap(~metric, scales = "free") +
     scale_color_manual(values = c("purple", "orange")) +
     scale_fill_manual(values = c("purple", "orange")) +
@@ -70,10 +70,11 @@ plot_metric_density <- function(data.l, metrics) {
 
 
 display <- function(correct.sample, incorrect.sample) { 
+  
   north.timeseries %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
     gather(key = metric, value = value, -.id, -date, -trial.type) %>%
-    filter((metric == "northS" | metric == "northI") & (.id == correct.sample | .id == incorrect.sample)) %>%
+    filter((metric == "northI") & (.id == correct.sample | .id == incorrect.sample)) %>%
     ggplot(aes(x = date, y = value *.0025)) +
     geom_line(size = 1.5) +
     facet_grid(metric~trial.type, scales = "free") +
@@ -84,7 +85,7 @@ display <- function(correct.sample, incorrect.sample) {
   desired.antigenic.metrics = c("antigenicTypes", "meanLoad", "diversity", "antigenicDiversity")
   
   north.track.antigen %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
     gather(key = metric, value = value, -.id, -day, -trial.type) %>%
     filter(metric %in% desired.antigenic.metrics  & (.id == correct.sample | .id == incorrect.sample)) %>%
     ggplot(aes(x = day/365, y = value)) +
@@ -98,7 +99,7 @@ display <- function(correct.sample, incorrect.sample) {
   desired.fitness.metrics = c("meanR", "meanBeta")
   
   north.track.fitness %>%
-    mutate(trial.type = ifelse(.id %in% correct.trials, "correct", "incorrect")) %>%
+    mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
     gather(key = metric, value = value, -.id, -day, -trial.type) %>%
     filter(metric %in% desired.fitness.metrics & (.id == correct.sample | .id == incorrect.sample)) %>%
     ggplot(aes(x = day/365, y = value)) +
@@ -111,3 +112,19 @@ display <- function(correct.sample, incorrect.sample) {
   
   plot_grid(pop.dynamics, antigenic.dynamics, fitness.dynamics, ncol = 1, rel_heights = c(.9, 1.3, 1))
 }
+
+
+
+fancy_scientific <- function(l) {
+  # turn in to character string in scientific notation
+  l <- format(l, scientific = TRUE)
+  # quote the part before the exponent to keep all the digits
+  l <- gsub("^(.*)e", "'\\1'e", l)
+  # turn the 'e+' into plotmath format
+  l <- gsub("e", "%*%10^", l)
+  # return this as an expression
+  parse(text=l)
+}
+
+
+

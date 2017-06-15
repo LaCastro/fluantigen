@@ -15,177 +15,65 @@ source('plotting_functions.R')
 
 
 ########## Antigen Frequencies START HERE 
-tropics.folder = "../data/tropics/"
 north.folder = "../data/north/"
 
 exploratory.figures = "../analysis/exploratory.figs/"
 
 ## Single Geo Analysis 
-#Read and combine files 
+#Read and combine files
+success.criteria = setNames(data.frame(matrix(ncol = 2, nrow = 1)), c("freq","length.days"))
+success.criteria$freq = .2
+success.criteria$length.days = 90
+
 antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
 
+north.data = create_meta_data_all(dir = north.folder, success.criteria)
+north.data = remove_trials_data(north.data, north.correct.trial)
 
-tropics.data = create.meta.data.all(dir = tropics.folder)
-tropics.antigen.frequencies <- read.outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
+north.antigen.frequencies <- read_outputfiles(north.folder, "/out.antigenFrequencies.txt")
+north.antigen.frequencies <- remove_trials_data(north.antigen.frequencies, north.correct.trial)
 
+north.infected.range = calculate_max_infected(timeseries = north.timeseries)
 
-tropics.data %>%
-  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
-  gather(key = metric, value = value,
-         -final.max, -life.length, -success, -postAntigen) -> data.l
-data.l$value = as.numeric(data.l$value)
+left_join(north.data, north.infected.range) %>%
+  mutate(ratio.I = (infected-min.I)/(max.I-min.I)) -> north.data
+north.data = calculate_age_of_dominant(north.data)
 
-Tropics.ant.density = plot_metric_density(data.l = data.l, metrics = antigen.specific.metrics)
-save_plot(antigenspecific.density, 
-          filename = "../analysis/exploratory.figs/Tantigenspecific.density.pdf", 
-          base_height = 8, base_aspect_ratio = 2)
-
-pop.dynamics <- c("S", "I")
-Tropics.pop.dynamics.density <- plot_metric_density(data.l, pop.dynamics)
-
-
-viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
-
-emergence.viral.fitness.l %>%
-viral.fitness.density  = plot_metric_density(data.l, viral.fitness.metrics)
-save_plot(viral.fitness.density, 
-          filename = "../analysis/exploratory.figs/Tviralfitness.density.pdf", 
-          base_height = 8, base_aspect_ratio = 1.5)
-
-
-######### Successful  Dynamics 
-tropics.data %>%
-  group_by(.id) %>%
-  filter(success == "yes") %>%
-  select(.id, postAntigen) -> success.types
-
-### For each successtype, go into antigen frequency all, filter and full out
-##### Read in the antigen frequencies and then store those in a list 
-antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
-  successful.types = sim$postAntigen 
-  successful.types = c(0, successful.types)
-  tropics.antigen.frequencies %>%
-    filter(.id == sim$.id[1]) %>%
-    filter(antigentype %in% successful.types) -> antigen.freq.sim
-  return(antigen.freq.sim)
-})
-
-
-
-#Determine the maximum number of colors going to need 
-antigen.freq.success.df %>%
-  group_by(.id) %>%
-  summarize(num.transitions = n_distinct(antigentype)) -> num.transitions
-max.color = sum(num.transitions$num.transitions)
-myColors = set.my.colors(max.color)
-
-
-## Need to first go in and fill all the missing values and then combine
-ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", function(sim) {
-  sim %>%
-    distinct(day, antigentype, .keep_all = TRUE) %>%
-    spread(key = antigentype, value = frequency, fill = 0) %>%
-    gather(key = antigentype, value = frequency, -1, -2, - infected)  -> antigen.freq.long
-  return(antigen.freq.long)
-})
-
-ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
-
-## Need to first go in and fill all the missing values and then combine
-
-# Calculate life spans
-tropics.life.spans = calculate.life.spans.success(ant.freq.success.l) 
-
-tropics.life.spans %>%
-  ggplot(aes(years)) +
-  facet_wrap(~.id)+
-  geom_histogram(binwidth = 1)
-  
-
-all.lifespans = calculate.total.life(tropics.antigen.frequencies)
-# Designate which ones are successful 
-all.lifespans.df = ddply(.data = success.types, .variables = ".id", function(sim) {
-  successful.types = sim$postAntigen 
-  successful.types = c(0, successful.types)
-  all.lifespans %>%
-    filter(.id == sim$.id[1]) %>%
-    mutate(success = ifelse(antigentype %in% successful.types, "yes", "no")) -> all.lifespans
-  return(all.lifespans)
-})
-
-all.lifespans.df %>%
-  ggplot(aes(life.length/365))+
-  facet_wrap(~success, scales = "free") + 
-  geom_histogram(bins = 10) -> life.span.histogram
-save_plot(filename = "../analysis/exploratory.figs/life.span.hist.pdf",
-          life.span.histogram, base_aspect_ratio = 1.5)
-
-
-ant.freq.success.l %>%
-  mutate(year = day/365) %>%
-  filter(frequency > 0) %>%
-  ggplot(aes(x = year, y = frequency, fill = antigentype)) +
-  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id) +
-  scale_color_manual(values = myColors) + 
-  scale_fill_manual(values = myColors)+
-  labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
-
-save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
-          freq.plot.tropics,
-          base_height = 8, base_aspect_ratio = 1.5)
-  
-ant.freq.success.l %>%
-  mutate(year = day/365) %>%
-  mutate(prevalence = infected*frequency*.0025) %>%
-  filter(prevalence > 0) %>%
-  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
-  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id, scales = "free_y") +
-  scale_color_manual(values = myColors) + 
-  scale_fill_manual(values = myColors)+
-  labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
-
-save_plot(filename = "../analysis/exploratory.figs/prev.plotT.pdf", 
-          prev.tropics.plot,
-          base_height = 8, base_aspect_ratio = 1.5)
-
-
-### NORTH 
-north.data = create.meta.data.all(dir = north.output.folder)
-
-north.antigen.frequencies <- read.outputfiles(north.output.folder, 
-                                              "/out.antigenFrequencies.txt")
 
 north.data %>%
-  filter(.id %in% correct.trial) %>%
-  select(-.id, -day, -oriAntigen, -N, -R, -cases, -simDay) %>%
+  select(-day, -oriAntigen, -N, -R, -cases, -simDay,-min.I, -max.I) %>%
   gather(key = metric, value = value,
-         -final.max, -life.length, -success, -postAntigen) -> data.l
-data.l$value = as.numeric(data.l$value)
+         -final.max, -life.length, -success, -postAntigen, -.id) -> north.data.l
+north.data.l$value = as.numeric(north.data.l$value)
 
-Tropics.ant.density = plot_metric_density(data.l = data.l, metrics = antigen.specific.metrics)
-save_plot(antigenspecific.density, 
-          filename = "../analysis/exploratory.figs/Tantigenspecific.density.pdf", 
+north.ant.density = plot_metric_density(data.l = north.data.l, metrics = antigen.specific.metrics)
+save_plot(north.ant.density, 
+          filename = "../analysis/exploratory.figs/N.antigenspecific.density.pdf", 
           base_height = 8, base_aspect_ratio = 2)
 
-pop.dynamics <- c("S", "I")
-Tropics.pop.dynamics.density <- plot_metric_density(data.l, pop.dynamics)
+pop.dynamics <- c("ratio.I", "S", "I")
+
+north.pop.dynamics.density <- plot_metric_density(north.data.l, pop.dynamics)
+save_plot(north.pop.dynamics.density, 
+          filename = "../analysis/exploratory.figs/N.pop.dynamics.pdf",
+          base_aspect_ratio = 2)
 
 
-viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
+viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma",
+                           "varBeta", "varR", "varSigma", "covBetaSigma")
 
-emergence.viral.fitness.l %>%
-  viral.fitness.density  = plot_metric_density(data.l, viral.fitness.metrics)
+variance.fitness.metrics <- c("varBeta", "varR", "varSigma", "covBetaSigma")
+
+
+viral.fitness.density  = plot_metric_density(north.data.l, viral.fitness.metrics)
+
 save_plot(viral.fitness.density, 
-          filename = "../analysis/exploratory.figs/Tviralfitness.density.pdf", 
+          filename = "../analysis/exploratory.figs/N.viralfitness.density.pdf", 
           base_height = 8, base_aspect_ratio = 1.5)
 
 
 ######### Successful  Dynamics 
-tropics.data %>%
+north.data %>%
   group_by(.id) %>%
   filter(success == "yes") %>%
   select(.id, postAntigen) -> success.types
@@ -195,12 +83,11 @@ tropics.data %>%
 antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
   successful.types = sim$postAntigen 
   successful.types = c(0, successful.types)
-  tropics.antigen.frequencies %>%
+  north.antigen.frequencies %>%
     filter(.id == sim$.id[1]) %>%
     filter(antigentype %in% successful.types) -> antigen.freq.sim
   return(antigen.freq.sim)
 })
-
 
 
 #Determine the maximum number of colors going to need 
@@ -208,8 +95,7 @@ antigen.freq.success.df %>%
   group_by(.id) %>%
   summarize(num.transitions = n_distinct(antigentype)) -> num.transitions
 max.color = sum(num.transitions$num.transitions)
-myColors = set.my.colors(max.color)
-
+myColors = set_my_colors(max.color)
 
 ## Need to first go in and fill all the missing values and then combine
 ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", function(sim) {
@@ -223,32 +109,24 @@ ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", 
 ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
 
 ## Need to first go in and fill all the missing values and then combine
+north.all.lifespans = calculate_total_life_id(north.antigen.frequencies)
 
-# Calculate life spans
-tropics.life.spans = calculate.life.spans.success(ant.freq.success.l) 
-
-tropics.life.spans %>%
-  ggplot(aes(years)) +
-  facet_wrap(~.id)+
-  geom_histogram(binwidth = 1)
-
-
-all.lifespans = calculate.total.life(tropics.antigen.frequencies)
 # Designate which ones are successful 
-all.lifespans.df = ddply(.data = success.types, .variables = ".id", function(sim) {
+north.lifespans.df = ddply(.data = success.types, .variables = ".id", function(sim) {
   successful.types = sim$postAntigen 
   successful.types = c(0, successful.types)
-  all.lifespans %>%
+  north.all.lifespans %>%
     filter(.id == sim$.id[1]) %>%
     mutate(success = ifelse(antigentype %in% successful.types, "yes", "no")) -> all.lifespans
   return(all.lifespans)
 })
 
-all.lifespans.df %>%
+north.lifespans.df %>%
   ggplot(aes(life.length/365))+
   facet_wrap(~success, scales = "free") + 
   geom_histogram(bins = 10) -> life.span.histogram
-save_plot(filename = "../analysis/exploratory.figs/life.span.hist.pdf",
+
+save_plot(filename = "../analysis/exploratory.figs/Nlife.span.hist.pdf",
           life.span.histogram, base_aspect_ratio = 1.5)
 
 
@@ -261,12 +139,12 @@ ant.freq.success.l %>%
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.north
 
-save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
-          freq.plot.tropics,
+save_plot(filename = "../analysis/exploratory.figs/freq.north.plot.pdf",
+          freq.plot.north,
           base_height = 8, base_aspect_ratio = 1.5)
-
+  
 ant.freq.success.l %>%
   mutate(year = day/365) %>%
   mutate(prevalence = infected*frequency*.0025) %>%
@@ -277,19 +155,38 @@ ant.freq.success.l %>%
   scale_color_manual(values = myColors) + 
   scale_fill_manual(values = myColors)+
   labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.north.plot
 
-save_plot(filename = "../analysis/exploratory.figs/prev.plotT.pdf", 
-          prev.tropics.plot,
+save_plot(filename = "../analysis/exploratory.figs/prev.plotN.pdf", 
+          prev.north.plot,
           base_height = 8, base_aspect_ratio = 1.5)
 
 
+### Combined Overview
+combined.lifespans = rbind(data.frame(id = "tropics", tropics.lifespans.df),
+                      data.frame(id = "north", north.lifespans.df))
+
+combined.lifespans %>%
+  filter(success == "yes") %>%
+  ggplot(aes(life.length/365)) +
+  geom_histogram(aes(y  = ..density.., color = id, fill = id)) +
+  geom_density(aes(color = id, fill = id), alpha = .5) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  scale_color_manual(values = c("purple", "orange"))+
+  labs(x = "Years above 20% Frequency")
 
 
+combined.lifespans %>%
+  filter(success == "yes") %>%
+  ggplot(aes(life.length/365)) +
+  geom_histogram(aes(y  = ..density..), binwidth = .5) +
+  geom_density(color = "blue", fill = "blue", alpha = .5) +
+  facet_wrap(~id) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  scale_color_manual(values = c("purple", "orange"))+
+  labs(x = "Years above 20% Frequency") -> combined.lifespans
 
-
-
-
+save_plot(filename = "exploratory.figs/combined.lifespans.pdf", combined.lifespans)
 
 
 ##########################
@@ -373,45 +270,51 @@ ggplot(time.difference, aes(time.difference, color = region, fill = region)) + g
 
 
 
-# Summary for Threshold Plot 
-#tropics.antigen.summary = antigen.success.summary(threshold.levels = threshold.levels, antigen.frequencies = tropics.antigen)
-#north.antigen.summary = antigen.success.summary(threshold.levels = threshold.levels, antigen.frequencies = north.antigen)
+# Summary for Threshold Plot - Need to change this to 180 days as well
 
-#combined.antigen.summary = bind_rows(north.antigen.summary, tropics.antigen.summary, .id = "source")
-#combined.antigen.summary$source[which(combined.antigen.summary$source == 1)] = "north"
-#combined.antigen.summary$source[which(combined.antigen.summary$source == 2)] = "tropics"
-#colnames(combined.antigen.summary)[3:5] = c("lower", "median", "upper")
+threshold.freq.levels = c(.05, .1, .15, .2, .25)
+threshold.day.levels = c(90, 180, 270, 360)
 
-#geom_point(position = position_dodge(width = 0.5)) +
-#  geom_errorbar(aes(ymin = lower, ymax = upper), width = .1, position = position_dodge(width = 0.5)) +
 
-#combined.antigen.summary %>%
-#  gather(metric, value, -source, -threshold) %>%
-#  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
-#  filter(type == "counts") %>%
-#  spread(key = metric, value = value) %>%
-#  ggplot(aes(x = threshold, y = mean, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
-#  geom_errorbar(aes(ymin = min, ymax = max), position=position_dodge(width=0.01)) +
-#  scale_color_manual(values = c("purple", "orange")) +
-#  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
-#  labs(x = "Threshold Level of Success", y = "Number of Success") +
-#  guides(color = FALSE) -> summary.plot1
+tropics.antigen.summary = antigen.success.summary(antigen.frequencies = tropics.antigen.frequencies,threshold.freq.levels = threshold.freq.levels, threshold.day.levels = threshold.day.levels)
+north.antigen.summary = antigen.success.summary(antigen.frequencies = north.antigen.frequencies.subset, threshold.freq.levels = threshold.freq.levels, threshold.day.levels = threshold.day.levels)
+
+combined.antigen.summary = bind_rows(north.antigen.summary, tropics.antigen.summary, .id = "source")
+combined.antigen.summary$source[which(combined.antigen.summary$source == 1)] = "north"
+combined.antigen.summary$source[which(combined.antigen.summary$source == 2)] = "tropics"
+colnames(combined.antigen.summary)[4:6] = c("lower", "mid", "upper")
+
+
+combined.antigen.summary %>%
+  gather(metric, value, -source, -freq, -day) %>%
+  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
+  filter(type == "counts") %>%
+  spread(key = metric, value = value) %>%
+  ggplot(aes(x = freq, y = median, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
+  facet_wrap(~day, nrow = 1)+
+  geom_errorbar(aes(ymin = min, ymax = max), position=position_dodge(width=0.01)) +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
+  labs(x = "Frequency Threshold Level", y = "Number of Success") +
+  guides(color = FALSE) -> summary.plot1
   
-#combined.antigen.summary %>%
-#  gather(metric, value, -source, -threshold) %>%
-#  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
-#  filter(type == "percentage") %>%
-#  spread(key = metric, value = value) %>%
-#  ggplot(aes(x = threshold, y = median, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
-#  geom_errorbar(aes(ymin = lower, ymax = upper), position=position_dodge(width=0.01)) +
-#  scale_color_manual(values = c("purple", "orange")) +
-#  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
-#  labs(x = "Threshold Levels of Success", y = "Percentage of Antigens") -> summary.plot2
+combined.antigen.summary %>%
+  gather(metric, value, -source, -freq, -day) %>%
+  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
+  filter(type == "percentage") %>%
+  spread(key = metric, value = value) %>%
+  ggplot(aes(x = freq, y = mid, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), position=position_dodge(width=0.01)) +
+  facet_wrap(~day, nrow = 1) +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
+  labs(x = "Frequency Threshold Level", y = "Percentage of Antigens") +
+ theme(legend.position="bottom")-> summary.plot2
 
 
-#plot_grid(summary.plot1, summary.plot2, nrow = 1) -> summary.grid
-#save_plot(filename = paste0(exploratory.figures, "antigen.success.summary.pdf"), 
-#          summary.grid, base_height = 4, base_aspect_ratio = 1.8)
+plot_grid(summary.plot1, summary.plot2, nrow = 2) -> summary.grid
+save_plot(filename = "exploratory.figs//antigen.success.summary.pdf", 
+          summary.grid, base_height = 8, base_aspect_ratio = 2)
 
 ######## histograms of the frequencies
 
@@ -492,3 +395,67 @@ north.trackAntigenic %>%
   north.lifespans <- calculate.life.spans(ant.freq.success.l)
   north.lifespans %>%
     ggplot(aes(years)) + geom_histogram(bins = 20)
+  
+  
+  
+######################## Combined Overview 
+combined.data = rbind(data.frame(id = "tropics", tropics.data.l),
+                       data.frame(id = "north", north.data.l))
+  
+
+antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
+pop.dynamics <- c("ratio.I", "S", "I")
+
+
+variance.fitness.metrics <- c("varBeta", "varR", "varSigma", "covBetaSigma")
+
+
+combined.data %>%
+  filter(metric == "covBetaSigma") %>%
+  ggplot(aes(value, fill = success, color = success)) + 
+  geom_density(alpha = .5, adjust  = 3) + 
+  facet_grid(~id) +
+  scale_color_manual(values = c("purple", "orange")) +
+  scale_fill_manual(values = c("purple", "orange")) +
+  theme(axis.text.x = element_text(size = 8)) +
+#  guides(col = FALSE) + guides(fill = FALSE) +
+  labs(subtitle = "Co-Variance in Beta and Sigma") -> covBetaSigma
+
+
+viral.variance.plot = plot_grid(varBeta, varR, varSigma, covBetaSigma, nrow = 2)
+save_plot(viral.variance.plot, filename = "exploratory.figs/viral.variance.plot.pdf",
+          base_height = 8,
+          base_aspect_ratio = 1.8)
+
+pop.dynamics.plot = plot_grid(ratioI, susceptibles, infected, nrow = 2)
+
+
+save_plot(pop.dynamics.plot, filename = "exploratory.figs/pop.dynamics.plot.pdf",
+          base_height = 8,
+          base_aspect_ratio = 1.8)
+
+antigen.specific.plot = plot_grid(cirTypes, distance, mutLoad, nrow = 2)
+save_plot(antigen.specific.plot, filename = "exploratory.figs/antigenic.specific.plot.pdf",
+          base_height = 8,
+          base_aspect_ratio = 1.8)
+
+
+dominant.type.plot  = plot_grid(dominant.freq, age.dominant)
+save_plot(dominant.type.plot, filename = "exploratory.figs/dominant.type.plot.pdf", 
+          base_aspect_ratio = 2)
+
+
+viral.fitness.pop.plot = plot_grid(genetic.diversity,
+                                   mean.beta,
+                                   mean.Load,
+                                   mean.R,
+                                   mean.sigma,
+                                   tmrca,
+                                   nrow = 2)
+save_plot(viral.fitness.pop.plot, filename = "exploratory.figs/viral.fitness.pop.pdf",
+          base_height = 8, base_aspect_ratio = 2.5)
+
+
+north.correct.trial
+
+

@@ -1,33 +1,70 @@
 # Plotting Timeseries Analysis 
 
 
-tropics.output.folder = "../data/tropics/"
-north.output.folder = "../data/north/"
+
+tropics.folder = "../data/tropics/"
+north.folder = "../data/north/"
 
 #create combined meta data for each entry of list  
 # Code for comparing north trials that are correct and those that arent' 
-north.timeseries = read.outputfiles(north.output.folder, "/out.timeseries.txt")
 
-north.timeseries %>%
+########### Tropics #######################################
+tropics.timeseries = read_outputfiles(tropics.folder, "/out.timeseries.txt")
+
+tropics.timeseries %>%
+  group_by(.id) %>%
+  mutate(ratio = totalI/totalS,
+         normalized.ratio = (ratio-min(ratio))/(max(ratio)-min(ratio)),
+         normalized.I = (totalI-min(totalI))/(max(totalI)-min(totalI))) -> tropics.timeseries
+
+tropics.timeseries %>%
+  select(.id, date, normalized.ratio, normalized.I) %>%
+  gather(key = metric, value = value, 3:4) %>%
+  ggplot(aes(x=date, y = value, color = metric)) + 
+  geom_line(size = 1.5)+
+  facet_wrap(~.id)
+
+tropics.timeseries %>%
   ggplot(aes(x=date, y = totalI*.0025)) +
   geom_line(size = 1.5) +
-  facet_wrap(~.id, scales = "free") -> north.timeseries.plot
-save_plot("../analysis/exploratory.figs/north.timeseries.plot.pdf", 
-          north.timeseries.plot,
+  facet_wrap(~.id, scales = "free") -> tropics.timeseries.plot
+
+tropics.trials = unique(tropics.timeseries$.id)
+tropics.correct.trials = tropics.trials[-which(tropics.trials == "tropics_11")]
+
+save_plot("../analysis/exploratory.figs/tropics.timeseries.plot.pdf", 
+          tropics.timeseries.plot,
           base_height = 8,
           base_aspect_ratio = 1.8)
 
-correct.trial = c("north_2", "north_4", "north_10")
+############### North #######################################
+north.timeseries = read_outputfiles(north.folder, "/out.timeseries.txt")
 
-north.track.antigen = read.outputfiles(north.output.folder, "/out.trackAntigenSeries.txt")
-north.track.fitness = read.outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
+north.trials = as.data.frame(unique(north.timeseries$.id)); colnames(north.trials) = "trial"
+
+
+north.correct.trial = c("north_2", 
+                        "north_4", 
+                        "north_10", 
+                        "north_11", 
+                        "north_12",
+                        "north_20",
+                        "north_22")
+
+north.trials %>%
+  filter(!(trial %in% north.correct.trial)) -> north.incorrect.trial
+
+north.track.antigen = read_outputfiles(north.output.folder, "/out.trackAntigenSeries.txt")
+north.track.fitness = read_outputfiles(north.output.folder, "/out.viralFitnessSeries.txt")
+
+
 
 total.timeseries = rbind(timeseries.all, north.timeseries, idcol = "source")
+correct.sample = sample(north.correct.trial, 1)
+incorrect.sample = as.character(sample(north.incorrect.trial$trial, 1))
 
-correct.sample = sample(correct.trials, 1)
-incorrect.sample = sample(incorrect.trials, 1)
 trial <- display(correct.sample, incorrect.sample)
-save_plot(trial, filename = paste0(exploratory.figures, "trial5.pdf"), base_height = 8)
+save_plot(trial, filename = "exploratory.figs/trial6.pdf", base_height = 8)
 
 
 
