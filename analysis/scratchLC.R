@@ -61,12 +61,10 @@ save_plot(north.pop.dynamics.density,
 
 viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma",
                            "varBeta", "varR", "varSigma", "covBetaSigma")
-
 variance.fitness.metrics <- c("varBeta", "varR", "varSigma", "covBetaSigma")
 
 
 viral.fitness.density  = plot_metric_density(north.data.l, viral.fitness.metrics)
-
 save_plot(viral.fitness.density, 
           filename = "../analysis/exploratory.figs/N.viralfitness.density.pdf", 
           base_height = 8, base_aspect_ratio = 1.5)
@@ -456,6 +454,44 @@ save_plot(viral.fitness.pop.plot, filename = "exploratory.figs/viral.fitness.pop
           base_height = 8, base_aspect_ratio = 2.5)
 
 
-north.correct.trial
+
+frequencies <- read_delim("~/Downloads/frequencies.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
 
 
+rowSums(frequencies[,2:5])
+
+
+colnames(frequencies)[5] = "m171K"
+
+frequencies %>%
+  select(x, m171K) -> m171K; colnames(m171K) = c("x", "frequency")
+
+
+
+frequencies %>%
+  gather(key = clade, value = frequency, -x, -m171K) %>%
+  ggplot(aes(x=x, y = frequency, fill = as.factor(clade))) +
+  geom_area(color = "black", aes(color = clade, fill = clade)) +
+  scale_fill_manual(values = c("orange", "purple", "grey"))+
+  scale_x_continuous(breaks = seq(2014.5, 2017.5, .5)) +
+  geom_line(aes(x = x, y = m171K, lty = "black"), size = 2) +
+  scale_linetype(labels = c("m171K")) +
+  labs(x = "Year", y = "Frequency", fill = "Clade", lty = "") +
+  theme(axis.text.x = element_text(size = 10)) -> empirical.frequency
+
+save_plot(filename = "exploratory.figs/empirical.frequency.pdf", plot = empirical.frequency,
+          base_aspect_ratio = 1.5)
+
+
+
+
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  filter(frequency > 0) %>%
+  ggplot(aes(x = year, y = frequency, fill = as.factor(number.clusters))) +
+  geom_area(color = "black", aes(color = number.clusters, fill = as.factor(number.clusters))) +
+  facet_wrap(~.id) +
+  scale_x_continuous(breaks = seq(0:10)) +
+  scale_y_continuous(breaks = seq(.1,1,.1)) + 
+  scale_color_manual(values = my.colors) + 
+  scale_fill_manual(values = my.colors)+

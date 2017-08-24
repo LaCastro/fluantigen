@@ -69,6 +69,19 @@ plot_metric_density <- function(data.l, metrics) {
 }
 
 
+plot_metric_histogram <- function(data.l, metrics) {
+  data.l %>%
+    filter(metric %in% metrics) %>%
+    ggplot(aes(value)) + 
+    geom_histogram(bins = 10, aes(fill = success), alpha =.8) + 
+    facet_grid(success~metric, scales = "free") +
+  #  scale_color_manual(values = c("purple", "orange")) +
+    scale_fill_manual(values = c("purple", "orange")) +
+    theme(axis.text.x = element_text(size = 8), legend.position = "none") + 
+    labs(x = "Count", y  = "Value")
+}
+
+
 display <- function(correct.sample, incorrect.sample) { 
   
   north.timeseries %>%

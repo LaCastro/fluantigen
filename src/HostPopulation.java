@@ -252,7 +252,7 @@ public class HostPopulation {
                 
             // Get mean immunity in host population to each unique type
             ArrayList<Integer> typeList = getAntigenicTypes(); // returns list of all unique antigenic types
-            ArrayList<Double> typeImmunities = getMeanTypeImmunities(typeList); //store average immunity in host population fotyper each 
+            ArrayList<Double> typeImmunities = getMeanTypeImmunities(typeList); //store average immunity in host population for each type 
             
             // Get beta, sigma and R distributions in viral population
             ArrayList<Double> betas = new ArrayList<Double>();
@@ -759,7 +759,7 @@ public class HostPopulation {
 	}
         
         // My method: mutations only occur at transmission events
-        public void stepForwardMutAtTrans() {
+    public void stepForwardMutAtTrans() {
 	
 	//	resetCases();
 		if (Parameters.swapDemography) {
@@ -1579,8 +1579,7 @@ public class HostPopulation {
             System.out.println("Removed " + removeTypes.size() + " from population's antigenic history");
             
         }
-        
-        
+               
         // Defunct
         public void cleanUpHistory() {
             

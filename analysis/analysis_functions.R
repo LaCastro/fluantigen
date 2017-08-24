@@ -19,7 +19,7 @@ read_console_files <- function(dir) {
   population.data <- lapply(file.list, function(.file) {
     output.file <- read.table(paste0(dir,.file, "/out.console.txt"), header = TRUE, fill = TRUE)
     # Clean console file here 
-    output.file = clean.console(output.file)
+    output.file = clean_console(output.file)
     return(output.file)
   })
   names(population.data) = file.list
@@ -125,6 +125,7 @@ create_meta_data <- function(sim.dir, success.criteria) {
   antigen.frequencies <- read.table(paste0(sim.dir, "/out.antigenFrequencies.txt"), header = TRUE)
   dominant.types <- find_dominant_types_at_emerge(antigen.frequencies)
   
+ 
   dominant.types %>%
     filter(day %in% days.of.emergence) -> dominant.types
   colnames(dominant.types)[2] = "dominant.type"; colnames(dominant.types)[3] = "dominant.freq"
@@ -141,8 +142,12 @@ create_meta_data <- function(sim.dir, success.criteria) {
   life.span <- calculate_total_life(antigen.frequencies)
   life.span$antigentype = as.character(life.span$antigentype)
   meta.data %>% left_join(life.span, by = c("postAntigen" = "antigentype")) -> meta.data
+  
   # Differentiate whether it was sucessful or not
-   meta.data %>%
+  #days.above.thres = calculate_days_above_thres(antigen.frequencies, success.criteria$threshold)
+  #days.above.thres$antigentype = as.character(days.above.thres$antigentype)
+  #meta.data %>% left_join(days.above.threshold, by = c("postAntigen" = "antigentype")) -> meta.data
+  meta.data %>%
     mutate(success = ifelse((final.max > success.criteria$freq & life.length > success.criteria$length.days), "yes", "no")) -> meta.data
   
   return(meta.data)
@@ -159,7 +164,6 @@ create_meta_data_all <- function(dir, success.criteria) {
   population.data = rbindlist(population.data, idcol = TRUE)
   return(population.data)
 }
-
 
 
 count_n_antigens <- function(antigen.record) {
@@ -243,6 +247,21 @@ calculate_total_life <- function(antigen.frequencies) {
   birth.death.days %>% 
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
     select(antigentype, life.length)
+}
+
+
+
+calculate_days_above_thres <- function(antigen.frequencies, threshold) {
+ 
+  antigen.frequencies %>%
+    group_by(.id, antigentype) %>%
+    filter(frequency > threshold) %>%
+    summarize(day.emerge = day[1],
+              last.day = tail(day)[1],
+              frequency.emerge = frequency[1],
+              frequency.down = tail(frequency)[1]) %>%
+    mutate(days.above = last.day-day.emerge) %>%
+    select(.id, antigentype, days.above)
 }
 
 

@@ -1,30 +1,45 @@
+rm(list=ls())
+source('analysis_functions.R'); source('plotting_functions.R')
+
 # Tropics Analysis 
 exploratory.figures = "../analysis/exploratory.figs/"
 tropics.folder = "../data/tropics/"
 
-success.criteria = as.data.frame(matrix( nrow = 1, ncol = 2, data = c(90, .2)))
+success.criteria = as.data.frame(matrix( nrow = 1, ncol = 2, data = c(180, .1)))
 colnames(success.criteria) = c("length.days", "freq")
 
 ## Single Geo Analysis 
-#Read and combine files 
 
+#Read and combine files 
+# creates a data frame of snapshot of what the population looked like when it emergeged 
+# separates mutations based on the success criteria provided 
 tropics.data = create_meta_data_all(dir = tropics.folder, success.criteria)
+
+
+# if one run doesn't look correct 
 tropics.data = remove_trials_data(tropics.data, tropics.correct.trials)
 
 
+# For each trial, calculate the max and min infection 
 tropics.infected.range = calculate_max_infected(tropics.timeseries)
+
+# Normalize the infections -- to help contextualize if it's in a peak or a trough
 left_join(tropics.data, tropics.infected.range) %>%
   mutate(ratio.I = (infected-min.I)/(max.I-min.I)) -> tropics.data
+
+# Calculate the age of the dominant cluster at the time the new mutation has emerged 
 tropics.data = calculate_age_of_dominant(tropics.data)
 
+########
 tropics.antigen.frequencies <- read_outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
 tropics.antigen.frequencies <- remove_trials_data(tropics.antigen.frequencies, tropics.correct.trials)
 
-# transform data into tidy format
+# Plot General Differences between mutations that were successful and those that weren't 
 tropics.data %>%
   select(-day, -oriAntigen, -N, -R, -cases, -simDay, -min.I, -max.I) %>%
   gather(key = metric, value = value,
          -final.max, -life.length, -success, -postAntigen, -.id) -> tropics.data.l
+
 tropics.data.l$value = as.numeric(tropics.data.l$value)
 
 antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq", "age")
@@ -48,7 +63,7 @@ save_plot(viral.fitness.density,
           base_height = 8, base_aspect_ratio = 1.5)
 
 
-######### Successful  Dynamics 
+#################### Just looking at  successful  Dynamics 
 tropics.data %>%
   group_by(.id) %>%
   filter(success == "yes") %>%
@@ -84,7 +99,44 @@ ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", 
 })
 ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
 
-# Calculate life spans
+
+ant.freq.success.l %>%
+  mutate(year = day/365) %>%
+  filter(frequency > 0) %>%
+  ggplot(aes(x = year, y = frequency, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id) +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  scale_x_continuous(breaks = seq(1:10))+
+  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
+
+save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
+          freq.plot.tropics,
+          base_height = 8, base_aspect_ratio = 1.5)
+
+ant.freq.success.l %>%
+  filter(.id != "tropics_11") %>%
+  mutate(year = day/365) %>%
+  mutate(prevalence = infected*frequency*.0025) %>%
+  filter(prevalence > 0) %>%
+  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  facet_wrap(~.id, scales = "free_y") +
+  scale_color_manual(values = myColors) + 
+  scale_fill_manual(values = myColors)+
+  labs(y = "Frequency", x = "Years")  +
+  scale_x_continuous(breaks = seq(1:10))+
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
+
+save_plot(filename = "../analysis/exploratory.figs/prev.tropics.plot.pdf", 
+          prev.tropics.plot,
+          base_height = 8, base_aspect_ratio = 1.5)
+
+
+
+# Calculating Life Span differences between the two 
 tropics.lifespans = calculate_total_life_id(tropics.antigen.frequencies)
 
 # Designate which ones are successful 
@@ -106,34 +158,3 @@ tropics.lifespans.df %>%
 save_plot(filename = "../analysis/exploratory.figs/T.life.span.hist.pdf",
           life.span.histogram, base_aspect_ratio = 1.5)
 
-ant.freq.success.l %>%
-  mutate(year = day/365) %>%
-  filter(frequency > 0) %>%
-  ggplot(aes(x = year, y = frequency, fill = antigentype)) +
-  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id) +
-  scale_color_manual(values = myColors) + 
-  scale_fill_manual(values = myColors)+
-  labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> freq.plot.tropics
-
-save_plot(filename = "../analysis/exploratory.figs/freq.tropics.plot.pdf",
-          freq.plot.tropics,
-          base_height = 8, base_aspect_ratio = 1.5)
-
-ant.freq.success.l %>%
-  filter(.id != "tropics_11") %>%
-  mutate(year = day/365) %>%
-  mutate(prevalence = infected*frequency*.0025) %>%
-  filter(prevalence > 0) %>%
-  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
-  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
-  facet_wrap(~.id, scales = "free_y") +
-  scale_color_manual(values = myColors) + 
-  scale_fill_manual(values = myColors)+
-  labs(y = "Frequency", x = "Years")  +
-  guides(col = FALSE) + guides(fill = FALSE) -> prev.tropics.plot
-
-save_plot(filename = "../analysis/exploratory.figs/prev.tropics.plot.pdf", 
-          prev.tropics.plot,
-          base_height = 8, base_aspect_ratio = 1.5)

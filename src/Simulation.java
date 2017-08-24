@@ -365,14 +365,12 @@ public class Simulation {
 		}
 	}
 
-
 	public void printTrackAntigens(PrintStream stream) {
 		stream.printf("%d\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d", 
 				(Parameters.day-1), getDiversity(), getTmrca(), getNetau(), getSerialInterval(), getAntigenicDiversity(), 
 				getN(), getS(), getI(), getR(), getCases(), getMeanLoad(), getAntigenicTypesCount(),getCumlAntigenicTypes());
 		stream.println();
 	}
-
 
 	public void printFitnessSamples(String time) {
 
@@ -411,8 +409,6 @@ public class Simulation {
 		stream.print("day\tsimDay\tmeanR\tvarR\tmeanBeta\tvarBeta\tmeanSigma\tvarSigma\tcovBetaSigma");
 		stream.println();
 	}
-
-
 
 	public void printTrackAntigenHeader(PrintStream stream) {
 		stream.print("day\tdiversity\ttmrca\tnetau\tserialInterval\tantigenicDiversity\tN\tS\tI\tR\tcases\tmeanLoad\tantigenicTypes\tcumulativeTypes");
@@ -497,7 +493,7 @@ public class Simulation {
 				antigenicDiversity += vA.antigenicDistance(vB);
 				coalOpp += coalWindow;
 				coalCount += vA.coalescence(vB, coalWindow); // TODO look this up: is there a coalescence event within x amount of time?
-				serialInterval += vA.serialInterval(); // birth of virus A to its parents bitrth
+				serialInterval += vA.serialInterval(); // birth of virus A to its parents birth
 			}
 		}	
 
@@ -629,7 +625,7 @@ public class Simulation {
 			PrintStream trackAntigenStream = new PrintStream(trackAntigenFile);
 			printTrackAntigenHeader(trackAntigenStream);
 
-			//TO DO - Change the output 
+		 
 			String antigenFrequenciesName = time.concat("/out.antigenFrequencies.txt");
 			File trackFrequenciesFile = new File(antigenFrequenciesName);
 			trackFrequenciesFile.delete();
