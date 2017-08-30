@@ -6,6 +6,7 @@ excluded = c("postAntigen", "day", "simDay", "date", "totalN", "totalR",
              "totalCases", "dominant.type", "day.1")
 predictorNames = colnames(freq.two)
 
+
 frequencysub = freq.five[, -which(variableNames%in%excluded)]
 frequencysub$success2 = NA
 frequencysub$success2[which(frequencysub$success == "yes")] = 0
@@ -57,9 +58,6 @@ auc <- roc(ifelse(testDF[,outcomeName]=="yes",1,0), predictions[[2]])
 print(auc$auc)
 
 
-
-
-
 #### Regression
 outcomeName <- 'success'
 set.seed(1234)
@@ -75,10 +73,6 @@ auc <- roc(testDF[,outcomeName], predictions)
 print(auc$auc)
 
 plot(varImp(objModel, scale = F))
-
-
-
-
 
 
 
@@ -170,57 +164,131 @@ head(hdp)
 #########################################################################################
 predictorNames = colnames(freq.five)
 
-#excluded = c("postAntigen", "day", "simDay", "date", "totalN", "totalR",
-#             "totalCases", "dominant.type", "max.I", "min.I")
+excluded = c("postAntigen", "day.1", "simDay", "date", "totalN", "totalR",
+             "totalCases", "dominant.type", "totalI", "max.I", "min.I")
 
-included = c("diversity", "meanBeta", "covBetaSigma", "dominant.freq", "normalize.I", "success", ".id")
+#included = c("diversity", "meanBeta", "covBetaSigma", "dominant.freq", "normalize.I", "success", ".id")
 
-data = freq.five[, which(predictorNames%in%included)]
+data = freq.five[, -which(predictorNames%in%excluded)]
 
+str(data)
 data <- within(data, {
   success <- factor(success, levels=c("yes", "no"), labels = c(1,0))
   .id <- factor(.id)
+  day <- as.numeric(as.character(day))
 })
 
 set.seed(1234)
+
+##### 
+
+
 outcomeName = "success"
-splitIndex <- createDataPartition(data[,outcomeName], p = .75, list = FALSE, times = 1)
-trainDF <- data[ splitIndex,]
-testDF  <- data[-splitIndex,]
+# Will do the splitting when I have more trials 
+#splitIndex <- createDataPartition(data[,outcomeName], p = .75, list = FALSE, times = 1)
+#trainDF <- data[ splitIndex,]
+#testDF  <- data[-splitIndex,]
 
 
-pvars <- included[1:5]
+dataScaled <- data
+dataScaled[,-c(1, 21)] <- lapply(dataScaled[,-c(1,21)],scale)
 
-dataS <- trainDF
-dataS[pvars] <- lapply(dataS[pvars],scale)
-
-testDF[pvars] <- lapply(testDF[pvars],scale)
-
-
-trial.id <- glmer(success~1 +(1|.id), data = dataS, family = binomial,
-                  control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-
-
-trial.meanBeta <- glmer(success~meanBeta +(1|.id), data = dataS, family = binomial,
+### Testing for multicollinearity 
+trial.all <- glmer(success~.-.id + (1|.id), data = dataScaled, family = binomial,
                         control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+vif.mer(trial.all)
 
-anova(trial.id, trial.meanBeta)
-
-trial.meanBetafreq <- glmer(success~meanBeta+dominant.freq + (1|.id), data = dataS, 
-                            family = binomial, control = glmerControl(optimizer="bobyqa"), nAGQ=10)
-
-trial.meanBetaNormalizeI <- glmer(success~meanBeta+normalize.I + (1|.id), data = dataS, 
-                                  family = binomial, control = glmerControl(optimizer="bobyqa"), nAGQ=10)
-
-trial.full <- glmer(success~meanBeta+normalize.I+dominant.freq + (1 |.id), data = dataS,
-                    family = binomial, control = glmerControl(optimizer="bobyqa"), nAG=10)
-summary(trial.full)
+####### Based on variables that are not colinear
+modelpurged <- glmer(success ~ diversity + dominant.freq+antigenicTypes+serialInterval+
+                       antigenicDiversity+netau+normalize.I+meanLoad+tmrca + (1|.id),
+                     data = dataScaled, family = binomial,
+                     control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
 
-exp(predict(trial.full, newdata = testDF))
+## going to exclude the data of the other variables 
+vif.included = c("success", ".id", "diversity", "dominant.freq", "antigenicTypes", "serialInterval", "antigenicDiversity", "netau", "normalize.I", "meanLoad", "tmrca")
+dataVif = dataScaled[, which(colnames(dataScaled) %in% vif.included)]
 
-trainDF %>%
-  gather(key = variable, value = value, -success,-.id) %>%
-  ggplot(aes(value))+geom_density(aes(color = success)) +
-  facet_wrap(~variable,scales = "free")
+
+### Null Model
+modelnull = glmer(success ~ 1 + (1|.id),
+                  data = dataVif, family = binomial,
+                  control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(modelnull)
+
+
+
+# Building Models with one term 
+anova(modelnull,model1)
+
+model1 <- glmer(success ~ meanLoad + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+
+model2 <- glmer(success ~ dominantFreq + (1|.id),
+                     data = dataVif, family = binomial,
+                     control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model2)
+anova(model1, model2)
+
+# Building models with 2 terms -- null model becomes the one with meanLoad
+model1 <- glmer(success ~ meanLoad + dominant.freq + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+anova(modelnull, model1)
+summary(model1)
+
+model2 <- glmer(success ~ meanLoad + normalize.I + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model2)
+anova(model1, model2)
+
+############# Building model 3 terms -- null model becomes one with meanLoad and Dolminant Frequency
+model1 <- glmer(success ~ meanLoad + dominant.freq + normalize.I + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model1)
+anova(modelnull, model1)
+
+model2 <- glmer(success ~ meanLoad + dominant.freq + antigenicTypes + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model2)
+
+################ Building model 4 terms -- null model becomes meanLoad/dominantfreq/normalize.I + (1|.id)
+model1 <- glmer(success ~ meanLoad + dominant.freq + normalize.I + antigenicTypes + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model1)
+anova(modelnull, model1)
+
+
+############### looking at interaction terms
+model1 <- glmer(success ~ (meanLoad + dominant.freq + normalize.I)^2 + (1|.id),
+                data = dataVif, family = binomial,
+                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+summary(model1)
+anova(modelnull, model1)
+
+
+               
+############### testing prediction
+model.predict = predict(modelnull, newdata = dataVif, type = "response")
+glmer.ROC <- roc(predictor=model.predict, response=dataVif$success)
+glmer.ROC$auc
+
+plot(glmer.ROC)
+
+
+############### Without Tropics effects 
+modelbase <- glm(success~., family = binomial(link = 'logit'), data = dataVif)
+summary(modelbase)
+anova(modelbase, test="Chisq")
+
+lme.bestfit = step(modelbase,  ~., test="Chisq",direction = "backward", data = dataVif)
+
+fittedResults = predict(lme.bestfit, newdata = dataVif, type = "response")
+lme.roc <- roc(predictor=fittedResults, response=dataVif$success, )
+lme.roc
 
