@@ -1,8 +1,9 @@
 ###### Functions
 
-
 ################### Data Cleaning and Data Prep ################
 read_outputfiles <- function(dir, type ) {
+  # Read in output file type from directory 
+  # Reads in all trials in that directory 
   file.list = list.dirs(dir, full.names = FALSE, recursive = FALSE)
   population.data <- lapply(file.list, function(.file) {
     output.file <- read.table(paste0(dir,.file, type), header = TRUE)
@@ -13,8 +14,9 @@ read_outputfiles <- function(dir, type ) {
   return(population.data)
 }
 
-
 read_console_files <- function(dir) {
+  # Reads console output files
+  # Reads in all trials in that directory 
   file.list = list.dirs(dir, full.names = FALSE, recursive = FALSE)
   population.data <- lapply(file.list, function(.file) {
     output.file <- read.table(paste0(dir,.file, "/out.console.txt"), header = TRUE, fill = TRUE)
@@ -27,8 +29,8 @@ read_console_files <- function(dir) {
   return(population.data)
 }
 
-
 clean_console <- function(console.file) {
+  # Cleans up console-gets rid of last two lines and if line break wasn't put in 
   output.file = console.file[1:(nrow(console.file)-2), ]
   na.rows = output.file[is.na(output.file$postAntigen),]
   na.indicies = which(is.na(output.file$postAntigen))
@@ -48,56 +50,53 @@ clean_console <- function(console.file) {
 }
 
 remove_trials_data <- function(data, trials) {
+  # Remove trials from meta data if dynamics 
+  # do not reflect empirical 
   data %>%
     filter(.id %in% trials)
 }
 
-
 find_antigen_emergence <- function(antigen.data){
+  # Find entries of novel antigens 
   antigen.data %>%
     filter(!duplicated(postAntigen)) %>%
     filter(postAntigen != 0) -> novel.types 
   return(novel.types)
 }
 
+#find_successful_types <- function(frequencies, threshold, length) {
+  # determines succcess if a 
+ # frequencies %>%
+#    filter(frequency > threshold) %>%
+#    group_by(antigentype) %>%
+#    summarize(n = n(), 
+#              max.freq  = max(frequency)) %>%
+#    filter(n > length) -> successful.types
+#    successful.types.id = successful.types$antigentype
 
-
-find_successful_types <- function(frequencies, threshold, length) {
-  frequencies %>%
-    filter(frequency > threshold) %>%
-    group_by(antigentype) %>%
-    summarize(n = n(), 
-              max.freq  = max(frequency)) %>%
-    filter(n > length) -> successful.types
-    successful.types.id = successful.types$antigentype
-
-    return(successful.types.id)
-}
-
-
+  #  return(successful.types.id)
+#}
 
 find_dominant_types_at_emerge <- function(antigen.frequencies) {
+  # Find the frequency of the dominant type circulating at emergence 
   antigen.frequencies %>%
     group_by(day) %>%
     slice(which.max(frequency)) 
 }
 
-
 find_max_frequency <- function(antigen.frequencies) {
+  # max frequency antigen type achieved 
   antigen.frequencies %>%
     group_by(antigentype) %>%
     summarize(final.max = max(frequency))
 }
 
-
-create_meta_data <- function(sim.dir, success.criteria) {
- 
+create_meta_data <- function(sim.dir) {
   ### Combines all the output files for novel antigens
   # reading in and cleaning up the console file 
   console.file <- read.table(paste0(sim.dir, "/out.console.txt"), header = TRUE, fill = TRUE)
   console.file = clean_console(console.file) 
   
-
   # find the time when novel antigens emerge
   novel.types = find_antigen_emergence(console.file)
   
@@ -111,12 +110,13 @@ create_meta_data <- function(sim.dir, success.criteria) {
   # record the exact days when new novel types are generated 
   days.of.emergence = meta.data$day
   
-  ## Read in viral fitness, select on the days that correspond to emergence 
+  ## Read in viral fitness, dplyr::select on the days that correspond to emergence 
   viral.fitness <- read.table(paste0(sim.dir, "/out.viralFitnessSeries.txt"), header = TRUE)
+
   viral.fitness %>%
     filter(day %in% days.of.emergence) %>%
     mutate(day = as.character(day)) %>%
-    select(-simDay) %>%
+    dplyr::select(-simDay) %>%
     filter(!duplicated(day)) -> viral.fitness.emergence
   meta.data %>%
     left_join(viral.fitness.emergence, by = "day") -> meta.data
@@ -124,7 +124,6 @@ create_meta_data <- function(sim.dir, success.criteria) {
   ## combine dominant frequency circulating at time of emergence
   antigen.frequencies <- read.table(paste0(sim.dir, "/out.antigenFrequencies.txt"), header = TRUE)
   dominant.types <- find_dominant_types_at_emerge(antigen.frequencies)
-  
  
   dominant.types %>%
     filter(day %in% days.of.emergence) -> dominant.types
@@ -144,20 +143,20 @@ create_meta_data <- function(sim.dir, success.criteria) {
   meta.data %>% left_join(life.span, by = c("postAntigen" = "antigentype")) -> meta.data
   
   # Differentiate whether it was sucessful or not
-  #days.above.thres = calculate_days_above_thres(antigen.frequencies, success.criteria$threshold)
+  #days.above.thres = _above_thres(antigen.frequencies, success.criteria$threshold)
   #days.above.thres$antigentype = as.character(days.above.thres$antigentype)
   #meta.data %>% left_join(days.above.threshold, by = c("postAntigen" = "antigentype")) -> meta.data
-  meta.data %>%
-    mutate(success = ifelse((final.max > success.criteria$freq & life.length > success.criteria$length.days), "yes", "no")) -> meta.data
+  #meta.data %>%
+  #  mutate(success = ifelse((final.max > success.criteria$freq & life.length > success.criteria$length.days), "yes", "no")) -> meta.data
   
   return(meta.data)
 }
 
-
-create_meta_data_all <- function(dir, success.criteria) {
+create_meta_data_all <- function(dir) {
+  # Runs create_meta_data on all trials in a directory 
   file.list = list.dirs(dir, full.names = FALSE, recursive = FALSE)
   population.data <- lapply(file.list, function(.file) {
-    meta.data = create_meta_data(paste0(dir, sim.dir = .file), success.criteria)
+    meta.data = create_meta_data(paste0(dir, sim.dir = .file))
     return(meta.data)
   })
   names(population.data) = file.list
@@ -165,15 +164,15 @@ create_meta_data_all <- function(dir, success.criteria) {
   return(population.data)
 }
 
-
 count_n_antigens <- function(antigen.record) {
+  # Return number of unique antigens in a record for each trial
   antigen.record %>%
     group_by(.id) %>%
     summarize(unique.antigens = n_distinct(antigentype)) -> n.antigens
 }
 
 count_success_antigens <- function(antigen.record, threshold.freq, threshold.day) {
- # browser()
+  # Counnt the number of antigens that meet a frequency and lifespan criteria 
   antigen.record %>%
     group_by(.id, antigentype) %>%
     filter(frequency > threshold.freq) %>%
@@ -182,14 +181,14 @@ count_success_antigens <- function(antigen.record, threshold.freq, threshold.day
     summarize(n.above.thres = n())
 }
 
-
 calculate_success_rate <- function(n.unique.antigens, n.success.antigens) {
+  # Calculate how many antigens are "successful" according to a particular criteria 
   success.rate = n.success.antigens$n.above.thres/n.unique.antigens$unique.antigens
   quantile(success.rate, probs = c(0.025, .5, 0.975))*100
 }
 
 antigen_success_summary <- function(threshold.freq.levels, threshold.day.levels, antigen.frequencies) {
-  
+  # Calculate summary metrics for how a success criteria affects number of strains inlcuded 
   n.unique.antigens = count.n.antigens(antigen.frequencies)
   
   threshold.combinations = expand.grid(threshold.freq.levels, threshold.day.levels)
@@ -217,26 +216,27 @@ antigen_success_summary <- function(threshold.freq.levels, threshold.day.levels,
   return(antigen.success.summary.df)
 }
 
-calculate_life_spans_success <- function(ant.freq.success.l) {
-  # takes each antigen and calculates time that it was above 10% 
+calculate_life_spans_success <- function(ant.freq.success.l, thres) {
+  # takes each antigen and calculates life time above a 
+  # threshold that it was above 10% 
   ant.freq.success.l %>%
     group_by(.id, antigentype) %>%
-    filter(frequency > .1) %>%
+    filter(frequency > thres) %>%
     summarize(days.alive = day[n()] - day[1]) %>%
     mutate(years = days.alive/365)
 }
 
 calculate_total_life_id <- function(antigen.frequencies) {
-  antigen.frequencies %>%
+  # This one doesn't have a threshold criteria
+   antigen.frequencies %>%
     group_by(.id,antigentype) %>%
     summarize(day.emerge = day[1],
               last.day = tail(day)[6]) -> birth.death.days 
    
   birth.death.days %>% 
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
-    select(.id,antigentype, life.length)
+    dplyr::select(.id,antigentype, life.length)
 }
-
 
 calculate_total_life <- function(antigen.frequencies) {
   antigen.frequencies %>%
@@ -246,37 +246,44 @@ calculate_total_life <- function(antigen.frequencies) {
   
   birth.death.days %>% 
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
-    select(antigentype, life.length)
+    dplyr::select(antigentype, life.length)
 }
 
-
-
 calculate_days_above_thres <- function(antigen.frequencies, threshold) {
- 
+ # Calculates the number of days an antigen type is present above a certain frequency
   antigen.frequencies %>%
     group_by(.id, antigentype) %>%
-    filter(frequency > threshold) %>%
+    dplyr::filter(frequency > threshold) %>%
     summarize(day.emerge = day[1],
               last.day = tail(day)[1],
               frequency.emerge = frequency[1],
               frequency.down = tail(frequency)[1]) %>%
     mutate(days.above = last.day-day.emerge) %>%
-    select(.id, antigentype, days.above)
+    dplyr::select(.id, antigentype, days.above) -> antigen.frequencies
+  antigen.frequencies$antigentype = as.character(antigen.frequencies$antigentype)
+  return(antigen.frequencies)
 }
 
-
 calculate_max_infected <- function(timeseries){
+  # calculate the 
   timeseries %>%
     group_by(.id) %>%
     summarize(max.I = max(totalI),
-              min.I = min(totalI))
+              min.I = min(totalI)) -> timeseries
+}
+
+normalize_infection <- function(meta.data, infected.range) {
+  meta.data %>% 
+    left_join(tropics.infected.range) %>%
+    mutate(normalize.I = (infected-min.I)/(max.I-min.I)) -> meta.data
+  return(meta.data)
 }
 
 
 calculate_age_of_dominant <- function(data) {
   data %>%
     group_by(.id) %>%
-    select(.id, day, postAntigen,dominant.type) -> dominant.on.day.of.emergence
+    dplyr::select(.id, day, postAntigen,dominant.type) -> dominant.on.day.of.emergence
   
     age.of.dominant = ddply(.data = dominant.on.day.of.emergence, .variables = ".id", function(sim) {
       for(i in 1:nrow(sim)){
@@ -296,3 +303,25 @@ calculate_age_of_dominant <- function(data) {
  data %>%
    left_join(age.of.dominant) 
 }
+
+return_success_types <- function(meta.data) {
+  meta.data  %>%
+    group_by(.id) %>%
+    filter(success == "yes") %>%
+    dplyr::select(.id, postAntigen)
+}
+
+filter_frequencies_success <- function(success.types, antigen.frequencies) {
+  # Filter antigen frequencies to only the ones that are succesful
+  # Works for multiple trials 
+  antigen.freq.success.df = ddply(.data = success.types, .variables = ".id", function(sim) {
+    types = sim$postAntigen 
+    types = c(0, types)
+    antigen.frequencies %>%
+      filter(.id == sim$.id[1]) %>%
+      filter(antigentype %in% types) -> antigen.freq.sim
+    return(antigen.freq.sim)
+  })
+  return(antigen.freq.success.df)
+}
+ 
