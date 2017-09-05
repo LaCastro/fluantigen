@@ -12,12 +12,12 @@
 #-------------------------------------------------------
 # 
 #------------------Scheduler Options--------------------
-#SBATCH -J tropics_test1          # Job name
-#SBATCH -N 2                   # Total number of nodes (16 cores/node)
-#SBATCH -n 4                  # Total number of tasks
+#SBATCH -J tropics_test1      # Job name
+#SBATCH -N 1                  # Total number of nodes (16 cores/node)
+#SBATCH -n 1                  # Total number of tasks
 #SBATCH -p normal          # Queue name
 #SBATCH -o out_test1.o%j      # Name of stdout output file (%j expands to jobid)
-#SBATCH -t 3:00:00            # Run time (hh:mm:ss)
+#SBATCH -t 6:00:00            # Run time (hh:mm:ss)
 #SBATCH --mail-user=lacastro225@gmail.com
 #SBATCH --mail-type=all  # email me all messages
 #      <------------ Account String ------------>
@@ -39,7 +39,7 @@ module load launcher/2.0
 export TACC_LAUNCHER_PPN=16
 export EXECUTABLE=$TACC_LAUNCHER_DIR/init_launcher
 export WORKDIR=..
-export CONTROL_FILE=run_sims.txt
+export CONTROL_FILE=run_trial.txt
 
 # Variable descriptions:
 #

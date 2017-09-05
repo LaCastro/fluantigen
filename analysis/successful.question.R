@@ -24,9 +24,9 @@ colnames(success.criteria) = c("length.days", "freq")
 ## Single Geo Analysis 
 # Read and combine files 
 # creates a data frame of snapshot of what the population looked like when it emerged 
-tropics.data = create_meta_data_all(dir = tropics.folder, success.criteria)
+tropics.data = create_meta_data_all(dir = tropics.folder)
 
-days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = .4)
+days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = .2)
 tropics.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> tropics.data
 
 already_lost = which(is.na(tropics.data$days.above))
@@ -214,9 +214,8 @@ for(thres in thresholds) {
     
     ant.freq.success.l %>%
       mutate(year = day/365) %>%
-     # mutate(prevalence = frequency*infected) %>%
-      mutate(prevalence = frequency) %>%
-      #
+      mutate(prevalence = frequency*infected) %>%
+      #mutate(prevalence = frequency) %>%
       filter(prevalence > 0) %>%
       ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
       geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
@@ -225,7 +224,7 @@ for(thres in thresholds) {
       scale_color_manual(values = myColors) + 
       scale_fill_manual(values = myColors) +
       labs(y = "Frequency", x = "Years") +
-      scale_x_continuous(breaks = seq(1:10)) +
+      scale_x_continuous(breaks = seq(1:20)) +
       guides(col = FALSE) + guides(fill = FALSE) -> prev.plot
     
     save_plot(filename = paste0("exploratory.figs/prev.day", day.length, "thres", thres,".pdf"), prev.plot,

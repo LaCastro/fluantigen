@@ -3,9 +3,12 @@ source('analysis_functions.R'); source('plotting_functions.R')
 
 # Plotting Timeseries Analysis 
 tropics.folder = "../data/tropics/"
+tropics.folder = "../newdata/"
 
+
+plot_timeseries_id(tropics.timeseries)
 ########### Tropics #######################################
-tropics.timeseries = read_outputfiles(tropics.folder, "/out.timeseries.txt")
+tropics.timeseries = read_outputfiles(tropics.trial, "/out.timeseries.txt")
 
 tropics.timeseries %>%
   group_by(.id) %>%

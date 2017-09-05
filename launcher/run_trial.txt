@@ -1,0 +1,2 @@
+java -jar trackAntigen.jar tropics_trial1 parameters_tropics.yml simdata -XX:+UseSerialGC Mutantigen
+java -jar trackAntigen.jar tropics_trial2 parameters_tropics.yml simdata -XX:+UseSerialGC Mutantigen

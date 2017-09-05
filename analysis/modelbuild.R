@@ -1,5 +1,6 @@
 library(caret)
 library(pROC)
+library(lme4)
 
 
 excluded = c("postAntigen", "day", "simDay", "date", "totalN", "totalR",
@@ -181,20 +182,20 @@ data <- within(data, {
 set.seed(1234)
 
 ##### 
-
-
 outcomeName = "success"
+
 # Will do the splitting when I have more trials 
-#splitIndex <- createDataPartition(data[,outcomeName], p = .75, list = FALSE, times = 1)
-#trainDF <- data[ splitIndex,]
-#testDF  <- data[-splitIndex,]
-
-
+splitIndex <- createDataPartition(data[,outcomeName], p = .75, list = FALSE, times = 1)
 dataScaled <- data
 dataScaled[,-c(1, 21)] <- lapply(dataScaled[,-c(1,21)],scale)
 
+trainDF <- dataScaled[ splitIndex,]
+testDF  <- dataScaled[-splitIndex,]
+
+
+
 ### Testing for multicollinearity 
-trial.all <- glmer(success~.-.id + (1|.id), data = dataScaled, family = binomial,
+trial.all <- glmer(success~.-.id + (1|.id), data = trainDF, family = binomial,
                         control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 vif.mer(trial.all)
 
@@ -207,66 +208,66 @@ modelpurged <- glmer(success ~ diversity + dominant.freq+antigenicTypes+serialIn
 
 ## going to exclude the data of the other variables 
 vif.included = c("success", ".id", "diversity", "dominant.freq", "antigenicTypes", "serialInterval", "antigenicDiversity", "netau", "normalize.I", "meanLoad", "tmrca")
-dataVif = dataScaled[, which(colnames(dataScaled) %in% vif.included)]
-
+trainDF = dataScaled[splitIndex, which(colnames(dataScaled) %in% vif.included)]
 
 ### Null Model
 modelnull = glmer(success ~ 1 + (1|.id),
-                  data = dataVif, family = binomial,
+                  data = trainDF, family = binomial,
                   control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(modelnull)
 
 
 
 # Building Models with one term 
-anova(modelnull,model1)
-
 model1 <- glmer(success ~ meanLoad + (1|.id),
-                data = dataVif, family = binomial,
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
-model2 <- glmer(success ~ dominantFreq + (1|.id),
-                     data = dataVif, family = binomial,
+summary(model1)
+anova(modelnull,model1)
+
+model2 <- glmer(success ~ normalize.I + (1|.id),
+                     data = trainDF, family = binomial,
                      control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model2)
 anova(model1, model2)
 
 # Building models with 2 terms -- null model becomes the one with meanLoad
 model1 <- glmer(success ~ meanLoad + dominant.freq + (1|.id),
-                data = dataVif, family = binomial,
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 anova(modelnull, model1)
 summary(model1)
 
 model2 <- glmer(success ~ meanLoad + normalize.I + (1|.id),
-                data = dataVif, family = binomial,
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model2)
 anova(model1, model2)
 
 ############# Building model 3 terms -- null model becomes one with meanLoad and Dolminant Frequency
-model1 <- glmer(success ~ meanLoad + dominant.freq + normalize.I + (1|.id),
-                data = dataVif, family = binomial,
+model1 <- glmer(success ~ meanLoad + antigenicTypes + dominant.freq + (1|.id),
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model1)
 anova(modelnull, model1)
 
-model2 <- glmer(success ~ meanLoad + dominant.freq + antigenicTypes + (1|.id),
-                data = dataVif, family = binomial,
+model2 <- glmer(success ~ meanLoad + antigenicTypes + normalize.I + (1|.id),
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model2)
 
 ################ Building model 4 terms -- null model becomes meanLoad/dominantfreq/normalize.I + (1|.id)
 model1 <- glmer(success ~ meanLoad + dominant.freq + normalize.I + antigenicTypes + (1|.id),
-                data = dataVif, family = binomial,
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model1)
 anova(modelnull, model1)
 
 
 ############### looking at interaction terms
-model1 <- glmer(success ~ (meanLoad + dominant.freq + normalize.I)^2 + (1|.id),
-                data = dataVif, family = binomial,
+model1 <- glmer(success ~ (meanLoad + dominant.freq + antigenicTypes)^2 + (1|.id),
+                data = trainDF, family = binomial,
                 control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 summary(model1)
 anova(modelnull, model1)
@@ -274,11 +275,17 @@ anova(modelnull, model1)
 
                
 ############### testing prediction
-model.predict = predict(modelnull, newdata = dataVif, type = "response")
-glmer.ROC <- roc(predictor=model.predict, response=dataVif$success)
+library(arm)
+library(pROC)
+model.predict = predict(modelnull, newdata = testDF, type = "response")
+glmer.ROC <- roc(predictor=model.predict, response=testDF$success)
 glmer.ROC$auc
 
 plot(glmer.ROC)
+
+
+plot(dataScaled$meanLoad, dataScaled$success, ylab = "Probability of Success")
+binnedplot(fitted(modelnull),resid(modelnull))
 
 
 ############### Without Tropics effects 
@@ -292,3 +299,37 @@ fittedResults = predict(lme.bestfit, newdata = dataVif, type = "response")
 lme.roc <- roc(predictor=fittedResults, response=dataVif$success, )
 lme.roc
 
+
+#############
+library(sjPlot)
+library(sjmisc)
+
+data
+set_theme(theme = "forest", 
+          geom.label.size = 3, 
+          axis.textsize = .9, 
+          axis.title.size = .9)
+
+# create binary response
+efc$hi_qol <- dicho(efc$quol_5)
+# prepare group variable
+efc$grp = as.factor(efc$e15relat)
+levels(x = efc$grp) <- get_labels(efc$e15relat)
+# data frame for fitted model
+mydf <- data.frame(hi_qol = efc$hi_qol,
+                   sex = to_factor(efc$c161sex),
+                   c12hour = efc$c12hour,
+                   neg_c_7 = efc$neg_c_7,
+                   grp = efc$grp)
+# fit glmer
+fit2 <- glmer(hi_qol ~ sex + c12hour + neg_c_7 + (1 | grp),
+              data = mydf, family = binomial("logit"))
+
+sjp.glmer(modelnull, type = "fe")
+plot(modelnull)
+library(ggplot2)
+
+ggplot(data.frame(eta=predict(modelnull,type="link"),pearson=residuals(modelnull,type="pearson")),
+       aes(x=eta,y=pearson)) +
+  geom_point() +
+  theme_bw()

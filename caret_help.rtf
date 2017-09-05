@@ -1,0 +1,26 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\fs24 \cf0 # classification you treat the first level as the one of interest\
+# the baseline probabilities will be predicting those events\
+\
+\
+1) set seed \
+\
+2) createDataPartition( - take the factor that you give it, and split it) \
+It returns integers for indexing the data set\
+\
+3) preProcess calculates values that can be used to apply to any data set (centering, scaling, spatial)\
+* Can get another trainScale to do this on your predicting \
+\
+4) Three Classes of Functions\
+	*Tuning models - a classification tree \
+	*each tree is adapting to the performance before based on weights \
+	*for prediction you\'92ll use all m trees, stage weight them\
+	*essentially averaging the trees \
+	\
+\
+}

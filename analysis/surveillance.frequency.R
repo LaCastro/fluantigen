@@ -154,6 +154,5 @@ freq.five.yes = find_data_at_freq_all(dir = tropics.folder, correct.trials = tro
 freq.five = rbind(data.frame(success = "yes", freq.five.yes),
                            data.frame(success = "no", freq.five.no))
 
-# Right now don't have this in 
 left_join(freq.five, summary.tropics) %>%
   mutate(normalize.I = (infected-min.I)/(max.I-min.I)) -> freq.five

@@ -4,16 +4,16 @@
 # Leaving an entry out is fine, the value will remain at its default.
 
                                             # simulation parameters
-burnin: 0                                   # days to wait before logging output 
-endDay: 3650                                # number of days to simulate (was 14600, 3650)
+burnin: 730                                    # days to wait before logging output 
+endDay: 14600                                # number of days to simulate (was 14600, 3650)
 printStep: 10                               # print to out.timeseries every X days
 tipSamplingStartDay: 2000					# day to start sampling for tree (wait a little while or will get basal multifurfaction at t = 0)
-tipSamplingEndDay: 3450                     # day to stop sampling for tree (was 14200, 3450)
+tipSamplingEndDay: 14200                     # day to stop sampling for tree (was 14200, 3450)
 tipSamplingRate: 0.00125                    # store X samples per deme per day
 tipSamplesPerDeme: 600                      # cap number of samples per deme
 tipSamplingProportional: true               # whether to sample proportional to prevalence (if multiple demes)
 treeProportion: 0.01                        # proportion of tips to use in tree reconstruction
-diversitySamplingCount: 10000                 # how many samples to draw to calculate diversity, netau and serial interval (1000)
+diversitySamplingCount: 1000                # how many samples to draw to calculate diversity, netau and serial interval (1000)
 netauWindow: 100                            # window in days to calculate Ne*tau
 repeatSim: false                            # repeat simulation until endDay is reached?
 immunityReconstruction: false               # whether to print immunity reconstruction to out.immunity
