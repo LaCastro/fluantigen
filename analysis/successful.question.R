@@ -12,7 +12,7 @@ library(broom)
 
 
 ##### Given a specific criteria for success, calculate the percentage of infections it accounts for the first year, second year, etc. 
-tropics.folder = "../data/tropics/"
+tropics.folder = "../data/tropics/tropics_20yr/"
 
 source('analysis_functions.R')
 source('plotting_functions.R')
@@ -36,21 +36,25 @@ tropics.data %>%
   mutate(success = ifelse(days.above > 365, "yes", "no")) -> tropics.data
 
 # Get the successful types
-success.types = return_success_types(tropics.data)
+success.types = return_success_types(antigen.data)
 
 ### For each successtype, go into antigen frequency all, filter and full out
 ##### Read in the antigen frequencies and then store those in a list 
 tropics.antigen.frequencies <- read_outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
 
 antigen.freq.success.df = filter_frequencies_success(success.types = success.types,
-                                                     antigen.frequencies = tropics.antigen.frequencies)
-# Procedure for calculating the proportion of cases over a year attributable 
+                                                     antigen.frequencies = antigen.frequencies)
 
-year.total = calculate_year_total(antigen.freq.success.df)
+
+# Procedure for calculating the proportion of cases over a year attributable 
+#year.total = calculate_year_total(antigen.freq.success.df)
 
 year.total %>%
   group_by(.id) %>%
   summarize(distinct.clusters = length(unique(number.clusters))) -> distinct.clusters 
+
+
+
 my.colors = brewer.pal(name = "Paired", max(distinct.clusters$distinct.clusters))
 
 year.total %>%
@@ -196,29 +200,48 @@ for(thres in thresholds) {
     antigen.freq.success.df = filter_frequencies_success(success.types = success.types, 
                                                          antigen.frequencies = tropics.antigen.frequencies)
     antigen.freq.success.df %>%
+      filter(day < 7300) -> antigen.freq.success.df
+    
+    antigen.freq.success.df %>%
       group_by(.id) %>%
       summarize(num.transitions = n_distinct(antigentype)) -> num.transitions
     
-    max.color = sum(num.transitions$num.transitions)
+   antigen.freq.success.df = ddply(antigen.freq.success.df,.variables = ".id", function(antigen) {
+      trial = antigen$.id[1]
+      num.distinct.cluster = num.transitions[which(num.transitions$.id == trial), "num.transitions"]
+      unique.antigens = unique(antigen$antigentype)
+      cluster.pair = data.frame(cbind(unique.antigens, seq(1:num.distinct.cluster$num.transitions)))
+      left_join(x = antigen, y = cluster.pair, by = c("antigentype" = "unique.antigens")) -> antigen
+      colnames(antigen)[6] = "cluster.number"
+      return(antigen)
+    })
+  
+    
+   head(antigen.freq.success.df)
+    max.color = max(num.transitions$num.transitions)
     myColors = set_my_colors(max.color)
     
     ## Need to first go in and fill all the missing values and then combine
     ant.freq.success.l = ddply(.data = antigen.freq.success.df, .variables = ".id", function(sim) {
       sim %>%
-        distinct(day, antigentype, .keep_all = TRUE) %>%
-        spread(key = antigentype, value = frequency, fill = 0) %>%
-        gather(key = antigentype, value = frequency, -1, -2, - infected)  -> antigen.freq.long
+        distinct(day, cluster.number, .keep_all = TRUE)%>%
+        dplyr::select(-antigentype) -> part1
+      part1 %>%
+        spread(key = cluster.number, value = frequency, fill = 0) -> step2 
+      step2 %>%
+        gather(key = cluster.number, value = frequency, -1, -2, - infected) -> antigen.freq.long
       return(antigen.freq.long)
     })
-    ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
+    
+    ant.freq.success.l$cluster.number = as.factor(ant.freq.success.l$cluster.number)
     
     ant.freq.success.l %>%
       mutate(year = day/365) %>%
       mutate(prevalence = frequency*infected) %>%
       #mutate(prevalence = frequency) %>%
       filter(prevalence > 0) %>%
-      ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
-      geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+      ggplot(aes(x = year, y = prevalence, fill = cluster.number)) +
+      geom_area(color = "black", aes(color = antigentype, fill = )) +
       #geom_line(aes(x = year, y = infected), color = "black") + 
       facet_wrap(~.id, scales = "free_y") +
       scale_color_manual(values = myColors) + 
@@ -231,3 +254,7 @@ for(thres in thresholds) {
               base_height = 8, base_aspect_ratio = 1.6)
   }
 }
+
+save_plot(filename = paste0(fig.folder, "prev.plot.pdf"), prev.plot,
+          base_height = 8, base_aspect_ratio = 1.6)
+

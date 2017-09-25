@@ -7,6 +7,7 @@ read_outputfiles <- function(dir, type ) {
   file.list = list.dirs(dir, full.names = FALSE, recursive = FALSE)
   population.data <- lapply(file.list, function(.file) {
     output.file <- read.table(paste0(dir,.file, type), header = TRUE)
+    print(.file) # when testing if the formatting is correct 
     output.file
   })
   names(population.data) = file.list
@@ -84,6 +85,7 @@ find_dominant_types_at_emerge <- function(antigen.frequencies) {
     slice(which.max(frequency)) 
 }
 
+
 find_max_frequency <- function(antigen.frequencies) {
   # max frequency antigen type achieved 
   antigen.frequencies %>%
@@ -94,6 +96,8 @@ find_max_frequency <- function(antigen.frequencies) {
 create_meta_data <- function(sim.dir) {
   ### Combines all the output files for novel antigens
   # reading in and cleaning up the console file 
+  print(sim.dir)
+ # browser()
   console.file <- read.table(paste0(sim.dir, "/out.console.txt"), header = TRUE, fill = TRUE)
   console.file = clean_console(console.file) 
   
@@ -139,7 +143,7 @@ create_meta_data <- function(sim.dir) {
   meta.data %>% left_join(maximum.freq.type, by = c("postAntigen" = "antigentype")) -> meta.data
   
   life.span <- calculate_total_life(antigen.frequencies)
-  life.span$antigentype = as.character(life.span$antigentype)
+  life.span$antigentype = as.factor(life.span$antigentype)
   meta.data %>% left_join(life.span, by = c("postAntigen" = "antigentype")) -> meta.data
   
   # Differentiate whether it was sucessful or not
@@ -239,10 +243,11 @@ calculate_total_life_id <- function(antigen.frequencies) {
 }
 
 calculate_total_life <- function(antigen.frequencies) {
+
   antigen.frequencies %>%
     group_by(antigentype) %>%
     summarize(day.emerge = day[1],
-              last.day = tail(day)[6]) -> birth.death.days 
+              last.day = last(day)) -> birth.death.days 
   
   birth.death.days %>% 
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
@@ -274,7 +279,7 @@ calculate_max_infected <- function(timeseries){
 
 normalize_infection <- function(meta.data, infected.range) {
   meta.data %>% 
-    left_join(tropics.infected.range) %>%
+    left_join(infected.range) %>%
     mutate(normalize.I = (infected-min.I)/(max.I-min.I)) -> meta.data
   return(meta.data)
 }

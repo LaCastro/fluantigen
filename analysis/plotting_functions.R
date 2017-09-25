@@ -14,11 +14,14 @@ fancy_scientific <- function(l) {
 plot_timeseries_id <- function(timeseries) {
   #plot the infected timeseries, wrapping by trial
   #eventually will change this to a sample with more trials
+
   timeseries %>%
+    dplyr::filter(date < 20) %>% # just when it's longer
     ggplot(aes(x = date, y = totalI*.0025)) + geom_line() +
     labs(x = "Year", y = "Infected per 100,000") +
     facet_wrap(~.id, scales = "free") +
-    scale_x_continuous(breaks = seq(1:10))
+    scale_x_continuous(breaks = seq(from = 1, to = 20, by = 2)) +
+    theme(axis.text.x = element_text(size = 8))
 }
 
 set_my_colors <- function(length.of.success) {
@@ -108,7 +111,7 @@ plot_full_output <- function(timeseries, trial, variable.set) {
     scale_color_manual(values = myColors) + 
     scale_fill_manual(values = myColors)+
     labs(y = "Infected", x = "Year")  +
-    scale_x_continuous(breaks = seq(1:10))+
+    scale_x_continuous(breaks = seq(from = 1, to = 20, by =2)) +
     guides(col = FALSE) + guides(fill = FALSE) -> prev.plot
   
   
@@ -133,7 +136,7 @@ plot_full_output <- function(timeseries, trial, variable.set) {
     ggplot(aes(x=day/365, y = value)) + 
     geom_line()+facet_wrap(~variable, nrow = ifelse(variable.set == "timeseries", 2,3), scales = "free") +
     labs(x = "Year") +
-    scale_x_continuous(breaks = seq(1:10)) +
+    scale_x_continuous(breaks = seq(from = 1, to = 20, by =2)) +
     theme(text = element_text(size = 8),
           axis.text = element_text(size = 8)) -> variable.plot
   

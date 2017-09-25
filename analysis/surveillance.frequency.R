@@ -12,7 +12,6 @@ library(data.table)
 library(RColorBrewer)
 library(broom)
 
-
 find_data_at_freq <- function(sim.dir, trial.meta.data, surveillance.freq, type) {
   # filter data to look at either successful or unsuccesful depending on desire
   trial.meta.data %>%
@@ -90,7 +89,7 @@ find_data_at_freq <- function(sim.dir, trial.meta.data, surveillance.freq, type)
 }
 find_data_at_freq_all <- function(dir, correct.trials, meta.data, surveillance.freq, type) {
   
-  tropics.data %>%
+  meta.data %>%
     dplyr::select(-cases, -simDay, -dominant.type) %>%
     filter(final.max > surveillance.freq) %>%  
     gather(key = metric, value = emergence.value, -.id, -postAntigen, -success) %>%
@@ -117,42 +116,55 @@ find_data_at_freq_all <- function(dir, correct.trials, meta.data, surveillance.f
   freq.data.all = rbindlist(freq.data, fill = TRUE)
   return(freq.data.all)
 }
+data_at_freq <- function(dir, correct.trials, surveillance.freq, meta.data, summary.infection) {
+  
+  freq.no = find_data_at_freq_all(dir = dir, correct.trials = correct.trials,
+                                  surveillance.freq =  surveillance.freq, meta.data = meta.data, type = "no")
+  freq.yes = find_data_at_freq_all(dir = dir, correct.trials =correct.trials,
+                                   surveillance.freq = surveillance.freq, meta.data = meta.data, type = "yes")
+  
+  freq.both = rbind(data.frame(success = "yes", freq.yes),
+                    data.frame(success = "no", freq.no))
+  
+  
+  left_join(freq.both, summary.infection) %>%
+    mutate(normalize.I = (infected-min.I)/(max.I-min.I)) -> freq.both
+  return(freq.both)
+}
+
 ############################################################################################################
 
-tropics.folder = "../data/tropics/"
+data.folder = "../data/tropics/tropics_20yr/"
 
-tropics.data = create_meta_data_all(dir = tropics.folder)
-tropics.timeseries = read_outputfiles(tropics.folder, "/out.timeseries.txt")
-tropics.infected.range = calculate_max_infected(tropics.timeseries)
-tropics.data = normalize_infection(meta.data = tropics.data, tropics.infected.range)
+antigen.data = create_meta_data_all(dir = data.folder)
+
+
+timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
+
+### For north, going to calculate the timeseries relative to what it's like below 10 years
+infected.range = calculate_max_infected(timeseries)
+antigen.data = normalize_infection(meta.data = antigen.data, infected.range)
 
 thres = .2
-tropics.antigen.frequencies = read_outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
-days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = thres)
-tropics.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> tropics.data
+antigen.frequencies = read_outputfiles(data.folder, "/out.antigenFrequencies.txt")
+days.above.thres = calculate_days_above_thres(antigen.frequencies, threshold = thres)
+antigen.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> antigen.data
 
-already_lost = which(is.na(tropics.data$days.above))
-tropics.data$days.above[already_lost] = 0
+already_lost = which(is.na(antigen.data$days.above))
+antigen.data$days.above[already_lost] = 0
 
-tropics.data %>%
-  mutate(success = ifelse(days.above > 45, "yes", "no")) -> tropics.data
+antigen.data %>%
+  mutate(success = ifelse(days.above > 45, "yes", "no")) -> antigen.data
 
-tropics.data %>%
+antigen.data %>%
   group_by(.id) %>%
   summarize(max.I = max(max.I),
-            min.I = min(min.I)) -> summary.tropics
+            min.I = min(min.I)) -> infection.summary 
 
 ## have to make data tidy before this 
-tropics.correct.trials = unique(tropics.data$.id)
+correct.trials = unique(antigen.data$.id)
 
-freq.five.no = find_data_at_freq_all(dir = tropics.folder, correct.trials = tropics.correct.trials,
-                                       surveillance.freq = .05, meta.data = tropics.data, type = "no")
-freq.five.yes = find_data_at_freq_all(dir = tropics.folder, correct.trials = tropics.correct.trials,
-                                          surveillance.freq = .05, meta.data = tropics.data, type = "yes")
+freq.05 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
+                         surveillance.freq = .05, summary.infection=infection.summary)
 
-# This is hard coded, would need to change
-freq.five = rbind(data.frame(success = "yes", freq.five.yes),
-                           data.frame(success = "no", freq.five.no))
 
-left_join(freq.five, summary.tropics) %>%
-  mutate(normalize.I = (infected-min.I)/(max.I-min.I)) -> freq.five

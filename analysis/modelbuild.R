@@ -1,279 +1,378 @@
-library(caret)
-library(pROC)
+library(plyr)
+library(dplyr)
+library(tidyverse)
 library(lme4)
-
-
-excluded = c("postAntigen", "day", "simDay", "date", "totalN", "totalR",
-             "totalCases", "dominant.type", "day.1")
-predictorNames = colnames(freq.two)
-
-
-frequencysub = freq.five[, -which(variableNames%in%excluded)]
-frequencysub$success2 = NA
-frequencysub$success2[which(frequencysub$success == "yes")] = 0
-frequencysub$success2[which(frequencysub$success == "no")] = 1
-
-str(frequencysub)
-# Creating Dummy variables 
-frequencysub$.id = as.factor(frequencysub$.id)
-frequencysubDummy <- dummyVars("~.", data = frequencysub, fullRank = F)
-frequencysub <- as.data.frame(predict(frequencysubDummy, frequencysub))
-
-# if the proportion was smaller than 15% would be considered a rare event and would be more challening to model
-# that's why check it at the 5/10%
-prop.table(table(frequencysub$success2))
-
-outcomeName <- 'success'
-predictorsNames <- names(frequencysub)[names(frequencysub)!=outcomeName]
-predictorsNames=predictorsNames[-21]
-
-# For GBM - classification 
-frequencysub$success2 <- ifelse(frequencysub$success==2,'yes','nope')
-frequencysub$success <- as.factor(frequencysub$success)
-outcomeName <- 'success'
-
-set.seed(1234)
-splitIndex <- createDataPartition(frequencysub[,outcomeName], p = .75, list = FALSE, times = 1)
-trainDF <- frequencysub[ splitIndex,]
-testDF  <- frequencysub[-splitIndex,]
-
-# Control the resampling of your data - splitting the training set internally to figure out the best settings for the model
-objControl <- trainControl(method='cv', number=3, returnResamp='none', summaryFunction = twoClassSummary, classProbs = TRUE)
-
-objModel <- train(trainDF[,predictorsNames], trainDF[,outcomeName], 
-                  method='gbm', 
-                  trControl=objControl,  
-                  metric = "ROC",
-                  preProc = c("center", "scale"))
-
-summary(objModel)
-
-# Class Predictions
-predictions <- predict(object = objModel, testDF[,predictorsNames], type = 'raw')
-print(postResample(pred=predictions, obs=as.factor(testDF[,outcomeName])))
-
-
-# Probabilites 
-predictions <- predict(object=objModel, testDF[,predictorsNames], type='prob')
-auc <- roc(ifelse(testDF[,outcomeName]=="yes",1,0), predictions[[2]])
-print(auc$auc)
-
-
-#### Regression
-outcomeName <- 'success'
-set.seed(1234)
-splitIndex <- createDataPartition(frequencysub[,outcomeName], p = .8, list = FALSE, times = 1)
-trainDF <- frequencysubsub[ splitIndex,]
-testDF  <- frequencysubsub[-splitIndex,]
-
-objControl <- trainControl(method='cv', number=3, returnResamp='none')
-objModel <- train(trainDF[,predictorsNames], trainDF[,outcomeName], method='glmnet',  metric = "RMSE", trControl=objControl)
-
-predictions <- predict(object=objModel, testDF[,predictorsNames])
-auc <- roc(testDF[,outcomeName], predictions)
-print(auc$auc)
-
-plot(varImp(objModel, scale = F))
-
-
-
-################ Logistic Regression
-library(pscl)
-library(ROCR)
+library(pROC)
 library(caret)
-
-str(freq.five)
-freq.five$.id = as.factor(freq.five$.id)
-freq.five$totalI=as.numeric(freq.five$totalI)
-
-variableNames = colnames(freq.five)
-excluded = c("postAntigen", "day", "simDay", "date", "totalN", "totalR", "totalI", 
-             "totalCases", "dominant.type", "day.1", "max.I", "min.I")
-
-frequencysub = freq.five[, -which(variableNames%in%excluded)]
-prop.table(table(frequencysub$success))
-outcomeName = "success"
-
-set.seed(505)
-splitIndex <- createDataPartition(frequencysub[,outcomeName], p = .80, list = FALSE, times = 1)
-train <- frequencysub[ splitIndex,]
-test  <- frequencysub[-splitIndex,]
-
-### Model Fitting 
-model <- glm(success~., family = binomial(link = 'logit'), data = train)
-summary(model)
-anova(model, test="Chisq")
-
-drop1(model, test="Chisq")
-backwards = step(model, direction="backward")
-
-add1(backwards, ~.^2,test="Chisq")
-interaction = step(backwards, ~.^2, direction = "forward")
-
-search$anova
-
-# Model Fit 
-pR2(search)
-
-test$success = as.factor(as.numeric(test$success))
-
-fittedResults <- predict(interaction, newdata = test[,-1], type = 'response')
-fittedResults <- ifelse(fittedResults > 0.5,1,0)
-
-test$success = ifelse(test$success == "yes",1,0)
-
-misClasificError <- mean(fittedResults != test[,1])
-print(paste('Accuracy', 1-misClasificError))
-
-p <- predict(interaction, newdata = subset(test[,-1]), type = "response")
-pr <- prediction(p, test$success)
-prf <- performance(pr, measure = "tpr", x.measure = "fpr")
-plot(prf)
-
-auc <- performance(pr, measure = "auc")
-auc <- auc@y.values[[1]]
-auc
-
-step(model, ~.^2, direction = "both")
-anova(backwards, test = "Chisq")
-
-install.packages('lme4')
-
-glmer()
-
-
-
-
-###########
-hdp <- read.csv("https://stats.idre.ucla.edu/stat/data/hdp.csv")
-
-hdp <- within(hdp, {
-  Married <- factor(Married, levels = 0:1, labels = c("no", "yes"))
-  DID <- factor(DID)
-  HID <- factor(HID)
-})
-
-m  <- glmer(remission~IL6+CRP+CancerStage+LengthofStay+Experience+(1|DID), data = hdp, family = binomial,
-            control = glmerControl(optimizer = "bobyqa"), nAGQ=10)
-
-summary(m)
-print(m, corr=FALSE)
-library(car)
-Anova(m)
-head(hdp)
+library(cvTools)
 
 #########################################################################################
-predictorNames = colnames(freq.five)
+predictorNames = colnames(antigen.data)
 
-excluded = c("postAntigen", "day.1", "simDay", "date", "totalN", "totalR",
+exclude.emerge = c("oriAntigen", "postAntigen", "cases", "cumulativeTypes", 
+                   "final.max", "dominant.type", "life.length", "max.I", "min.I",
+                   "days.above", "infected", "N", "R")
+
+data = antigen.data[, -which(predictorNames%in%exclude.emerge)]
+
+
+predictorNames = colnames(freq.05)
+excluded = c("postAntigen", "oriAntigen",  "day.1", "date", "totalN", "totalR",
              "totalCases", "dominant.type", "totalI", "max.I", "min.I")
+data = freq.05[, -which(predictorNames%in%excluded)]
 
-#included = c("diversity", "meanBeta", "covBetaSigma", "dominant.freq", "normalize.I", "success", ".id")
-
-data = freq.five[, -which(predictorNames%in%excluded)]
-
-str(data)
 data <- within(data, {
   success <- factor(success, levels=c("yes", "no"), labels = c(1,0))
   .id <- factor(.id)
   day <- as.numeric(as.character(day))
+  #mutLoad <- as.numeric(as.character(mutLoad))
+  #distance <- as.numeric(as.character(distance))
+  simDay <- as.numeric(as.character(simDay))
 })
 
-set.seed(1234)
+#data %>%
+#  filter(day > (3*365) & day < 3650) -> dataBurn
 
-##### 
-outcomeName = "success"
+data %>%
+  filter(day > 365) -> dataBurn
 
-# Will do the splitting when I have more trials 
-splitIndex <- createDataPartition(data[,outcomeName], p = .75, list = FALSE, times = 1)
-dataScaled <- data
-dataScaled[,-c(1, 21)] <- lapply(dataScaled[,-c(1,21)],scale)
+number.years.rep = 17
 
-trainDF <- dataScaled[ splitIndex,]
-testDF  <- dataScaled[-splitIndex,]
+##### When the simDay isn't in terms of the burn in day, don't need the -1 and -3 
+dataBurn %>%
+  mutate(time.of.year = (simDay)-floor((x = day/365))) %>%
+  mutate(quarter = ifelse(time.of.year < .25, 1,
+                          ifelse(time.of.year < .5, 2,
+                                 ifelse(time.of.year < .75, 3,4)))) -> dataScaled
+
+dataScaled$quarter = as.factor(dataScaled$quarter)
+
+# Take our any data that's before 3 years
+table(dataScaled$success)/nrow(dataScaled)
+
+dataScaled%>%
+  group_by(.id)%>%
+  summarize(mutations = n())%>%
+  summarize(mean.mutations = mean(mutations)/number.years.rep)
 
 
+factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
+dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
 
-### Testing for multicollinearity 
-trial.all <- glmer(success~.-.id + (1|.id), data = trainDF, family = binomial,
-                        control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
+
+
+trial.all <- glmer(success ~.-.id -quarter+ (1|.id), data = dataScaled, family = binomial,
+                   control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+
 vif.mer(trial.all)
 
-####### Based on variables that are not colinear
-modelpurged <- glmer(success ~ diversity + dominant.freq+antigenicTypes+serialInterval+
-                       antigenicDiversity+netau+normalize.I+meanLoad+tmrca + (1|.id),
-                     data = dataScaled, family = binomial,
-                     control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+vif.included = c("success",
+                 "quarter",
+                 "distance",
+                 "mutLoad",
+                 "diversity", 
+                 "tmrca",
+                 "netau",
+                 "serialInterval",
+                 "antigenicDiversity",
+                 "dominant.freq",
+                 "meanLoad",
+                 "antigenicTypes",
+                 "normalize.I",
+                 "time.of.year",  # 
+                 "varR",
+                 "meanR",
+                 "covBetaSigma")
+
+dataPurged = dataScaled[,which(colnames(dataScaled) %in% vif.included)]
+dataPurged = cbind(dataScaled[,".id"], dataPurged)
+colnames(dataPurged)[1] = "trial"
+
+trial.purged <- lme4::glmer(success ~.-trial -quarter+ (1 | trial), data = dataPurged, family = binomial,
+                   control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+
+vif.mer(trial.purged)
+
+################### Doing K-cross validation 
+outcomeName = "success"
+
+set.seed(62417)
+folds.length = 5;
+folds = cvFolds(n = length(unique(dataPurged$trial)), K = folds.length, type = "random")
+
+glmerperf=rep(0, folds.length); glmperf=glmerperf;
+aic = rep(0,folds.length)
+coef = rep(0,folds.length)
+ref.sd = rep(0,folds.length)
+
+dataPurged %>%
+  gather(key = variable, value = value, -trial, -success) -> data.l
+
+data.l$value = as.numeric(as.character(data.l$value))
+str(data.l)
+
+single.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+  # K-fold validation for each model based on a single term 
+  for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.l$trial)[test.ids]
+    
+    testdata = x[which(x$trial %in% test.trials), ]
+    traindata = x[-which(x$trial %in% test.trials),]
+    
+    GLMER <- lme4::glmer(success ~ value  + (1 | trial), data = traindata, family="binomial", 
+                         control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+   
+    aic[n] <- extractAIC(GLMER)[2]
+    coef[n] <- summary(GLMER)$coefficients[2,4]
+    ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
+    glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+    glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+    glmerperf[n] <- glmer.ROC$auc
+  }
+  single.performance=mean(glmerperf)
+  single.aic=mean(aic)
+#  single.coef=mean(coef)
+  single.ref.sd=mean(ref.sd)
+  print(x$variable[1])
+  return(cbind(single.performance, single.aic, single.ref.sd))
+})
+
+single.model.results
 
 
-## going to exclude the data of the other variables 
-vif.included = c("success", ".id", "diversity", "dominant.freq", "antigenicTypes", "serialInterval", "antigenicDiversity", "netau", "normalize.I", "meanLoad", "tmrca")
-trainDF = dataScaled[splitIndex, which(colnames(dataScaled) %in% vif.included)]
+################################## Running cross validation on single model
+ 
+set.seed(62417)
+folds.length = 5;
+folds = cvFolds(n = length(unique(dataPurged$trial)), K = folds.length, type = "random")
 
-### Null Model
-modelnull = glmer(success ~ 1 + (1|.id),
-                  data = trainDF, family = binomial,
-                  control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(modelnull)
-
+glmerperf=rep(0, folds.length); glmperf=glmerperf;
+aic = rep(0,folds.length)
 
 
-# Building Models with one term 
-model1 <- glmer(success ~ meanLoad + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
-summary(model1)
-anova(modelnull,model1)
+for(n in 1:folds.length) { 
+  test.ids = folds$subsets[folds$which==n]
+  test.trials = unique(dataPurged$trial)[test.ids]
+  
+  testdata = dataPurged[which(dataPurged$trial %in% test.trials), ]
+  traindata = dataPurged[-which(dataPurged$trial %in% test.trials),]
+  
+  
+#  model.emerge <- glm(success~distance+mutLoad + normalize.I + meanLoad+ meanLoad*mutLoad + mutLoad*normalize.I,
+#                           family = "binomial", data = traindata)
+  
+# model.two <- glm(success~normalize.I +covBetaSigma+serialInterval, 
+#                   family = "binomial", data = traindata)
+  
+#  model.five <- glm(success~netau+dominant.freq+normalize.I,
+#                   family = "binomial", data = traindata)
 
-model2 <- glmer(success ~ normalize.I + (1|.id),
-                     data = trainDF, family = binomial,
-                     control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model2)
-anova(model1, model2)
-
-# Building models with 2 terms -- null model becomes the one with meanLoad
-model1 <- glmer(success ~ meanLoad + dominant.freq + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-anova(modelnull, model1)
-summary(model1)
-
-model2 <- glmer(success ~ meanLoad + normalize.I + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model2)
-anova(model1, model2)
-
-############# Building model 3 terms -- null model becomes one with meanLoad and Dolminant Frequency
-model1 <- glmer(success ~ meanLoad + antigenicTypes + dominant.freq + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model1)
-anova(modelnull, model1)
-
-model2 <- glmer(success ~ meanLoad + antigenicTypes + normalize.I + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model2)
-
-################ Building model 4 terms -- null model becomes meanLoad/dominantfreq/normalize.I + (1|.id)
-model1 <- glmer(success ~ meanLoad + dominant.freq + normalize.I + antigenicTypes + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model1)
-anova(modelnull, model1)
+  model.ten <- glm(success~normalize.I+dominant.freq+varR+normalize.I*varR,
+                   family = "binomial",data=traindata)  
+  #model.glm <- lme4::glmer(success~distance+mutLoad+meanLoad+normalize.I + mutLoad*normalize.I + mutLoad*meanLoad + (1|trial),
+  #                  family = "binomial", data = traindata, control = glmerControl(optimizer="bobyqa"))
+  
+  aic[n] <- extractAIC(model.ten)[2]
+  #glmer.probs <- predict(model.glm, newdata=testdata, type="response", allow.new.levels=TRUE)
+  glmer.probs <- predict(model.ten, newdata=testdata, type="response")
+  
+  glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+  glmerperf[n] <- glmer.ROC$auc
+}
 
 
-############### looking at interaction terms
-model1 <- glmer(success ~ (meanLoad + dominant.freq + antigenicTypes)^2 + (1|.id),
-                data = trainDF, family = binomial,
-                control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-summary(model1)
-anova(modelnull, model1)
+
+########################### second.model.results 
+dataPurged %>%
+  gather(key = variable, value = value, -trial, -success, -netau) -> data.l
+data.l$value=as.numeric(data.l$value)
 
 
+double.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+  # K-fold validation for each model based on a single term 
+  for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.l$trial)[test.ids]
+    
+    testdata = x[which(x$trial %in% test.trials), ]
+    traindata = x[-which(x$trial %in% test.trials),]
+    
+    GLMER <- lme4::glmer(success ~ netau + value  + (1 | trial), data = traindata, family="binomial", 
+                         control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+    
+    #GLMER <- glm(success ~ normalize.I + value, data = traindata, family="binomial")
+    aic[n] <- extractAIC(GLMER)[2]
+    coef[n] <- summary(GLMER)$coefficients[3,4]
+    ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
+    glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+    glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+    glmerperf[n] <- glmer.ROC$auc
+  }
+  double.performance=mean(glmerperf)
+  double.aic=mean(aic)
+  double.coef=mean(coef)
+  double.ref.sd=mean(ref.sd)
+  print(x$variable[1])
+  return(cbind(double.performance, double.aic, double.coef, double.ref.sd))
+})
+
+double.model.results
+
+
+############################### third term results
+dataPurged %>%
+  gather(key = variable, value = value, -trial, -success, -dominant.freq, -netau) -> data.l
+data.l$value=as.numeric(data.l$value)
+
+third.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+  # K-fold validation for each model based on a single term 
+  for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.l$trial)[test.ids]
+    
+    testdata = x[which(x$trial %in% test.trials), ]
+    traindata = x[-which(x$trial %in% test.trials),]
+    
+    GLMER <- lme4::glmer(success ~ dominant.freq + netau+ value  + (1 | trial), data = traindata, family="binomial", 
+                         control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+    #GLMER <- glm(success ~ normalize.I + covBetaSigma + value, data = traindata, family="binomial")
+    
+    aic[n] <- extractAIC(GLMER)[2]
+    coef[n] <- summary(GLMER)$coefficients[4,4]
+    ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
+    glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+    glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+    glmerperf[n] <- glmer.ROC$auc
+  }
+  performance=mean(glmerperf)
+  aic=mean(aic)
+  coeff.sig = mean(coef)
+  rd.eff=mean(ref.sd)
+  print(x$variable[1])
+  return(cbind(performance, aic, coeff.sig, rd.eff))
+})
+
+
+third.model.results
+
+############################### fourth term results
+dataPurged %>%
+  gather(key = variable, value = value, -trial, -success, 
+         -dominant.freq, -netau, -varR, -normalize.I,-tmrca) -> data.l
+data.l$value=as.numeric(data.l$value)
+# Remember to change the coefficien
+
+six.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+  # K-fold validation for each model based on a single term 
+  for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.l$trial)[test.ids]
+    
+    testdata = x[which(x$trial %in% test.trials), ]
+    traindata = x[-which(x$trial %in% test.trials),]
+    
+     GLMER <- lme4::glmer(success ~   dominant.freq + netau + varR + normalize.I+value +tmrca+(1 | trial), data = traindata, family="binomial", 
+                           control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+    #GLMER <- glm(success ~ diversity + antigenicTypes + covBetaSigma + value, data = traindata, family="binomial")
+    
+    aic[n] <- extractAIC(GLMER)[2]
+    coef[n] <- summary(GLMER)$coefficients[7,4]
+    ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
+    glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+    glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+    glmerperf[n] <- glmer.ROC$auc
+  }
+  performance=mean(glmerperf)
+  aic=mean(aic)
+  coeff.sig = mean(coef)
+  rd.eff=mean(ref.sd)
+  print(x$variable[1])
+  return(cbind(performance, aic, coeff.sig, rd.eff))
+  return(cbind(performance, aic))
+})
+
+six.model.results
+
+#################### anova tests
+dataPurged %>%
+  select(trial,success, netau, dominant.freq, varR, normalize.I, tmrca, meanR) -> data.l
+
+for(n in 1:folds.length) { 
+  test.ids = folds$subsets[folds$which==n]
+  test.trials = unique(data.l$trial)[test.ids]
+  
+  #  testdata = x[which(x$trial %in% test.trials), ]
+  #  traindata = x[-which(x$trial %in% test.trials),]
+  
+  testdata = data.l[which(data.l$trial %in% test.trials), ]
+  traindata = data.l[-which(data.l$trial %in% test.trials),]
+  
+  model.null <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I+  (1 | trial),
+                                                   data = traindata, family="binomial", 
+                                                   control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+  
+  model.test <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca  + (1 | trial),
+                            data = traindata, family="binomial", 
+                            control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+  
+  print(anova(model.null, model.test, test = "Chisq"))
+}
+
+
+
+
+######################### Interaction Results 
+dataPurged %>%
+  #gather(key = variable, value = value, -trial, -success, -normalize.I, -covBetaSigma, antigenicTypes)  -> data.l
+  select(trial,success, netau, dominant.freq, varR, normalize.I, tmrca) -> data.l
+
+data.l$value=as.numeric(data.l$value)
+
+coeff=matrix(nrow = folds.length, ncol = 3)
+coeff=rep(NA,folds.length)
+
+for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.l$trial)[test.ids]
+    
+    testdata = data.l[which(data.l$trial %in% test.trials), ]
+    traindata = data.l[-which(data.l$trial %in% test.trials),]
+
+    model.null <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca  + 
+                                normalize.I*varR + (1 | trial),
+                          data = traindata, family="binomial", 
+                          control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+  
+    print(summary(model.null))
+    model.int <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca + 
+                               normalize.I*varR + varR*tmrca + (1 | trial),
+                              data = traindata, family="binomial", 
+                              control = glmerControl(optimizer="bobyqa"),nAGQ=10)
+    
+  # coeff[n,] <- summary(model.9)[[10]][9:11,4]
+    
+    
+    coef[n] <- summary(model.int)$coefficients[6,4]
+    ref.sd[n] <- sqrt(VarCorr(model.int)$trial[1])
+    aic[n] <- extractAIC(model.int)[2]
+    glmer.probs <- predict(model.int, newdata=testdata, type="response", allow.new.levels=TRUE)
+    glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+    glmerperf[n] <- glmer.ROC$auc
+
+    #print(anova(model.null, model.int, test="Chisq"))
+  }
+
+mean(glmerperf)
+mean(aic)
+mean(coef)
+mean(ref.sd)
+#colMeans(coeff)
                
+
+plot(glmer.ROC)
 ############### testing prediction
 library(arm)
 library(pROC)
@@ -282,54 +381,57 @@ glmer.ROC <- roc(predictor=model.predict, response=testDF$success)
 glmer.ROC$auc
 
 plot(glmer.ROC)
+cbind(glmer.ROC$sensitivities, glmer.ROC$specificities, glmer.ROC$thresholds)
+
+
+
 
 
 plot(dataScaled$meanLoad, dataScaled$success, ylab = "Probability of Success")
 binnedplot(fitted(modelnull),resid(modelnull))
 
 
-############### Without Tropics effects 
-modelbase <- glm(success~., family = binomial(link = 'logit'), data = dataVif)
-summary(modelbase)
-anova(modelbase, test="Chisq")
 
-lme.bestfit = step(modelbase,  ~., test="Chisq",direction = "backward", data = dataVif)
-
-fittedResults = predict(lme.bestfit, newdata = dataVif, type = "response")
-lme.roc <- roc(predictor=fittedResults, response=dataVif$success, )
-lme.roc
+###### Visualization  
+GLMER <- lme4::glmer(success ~ antigenicTypes + diversity  + (1 | trial), data = dataPurged, family="binomial", 
+                     control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
 
-#############
 library(sjPlot)
 library(sjmisc)
+library(sjlabelled)
 
-data
-set_theme(theme = "forest", 
-          geom.label.size = 3, 
-          axis.textsize = .9, 
-          axis.title.size = .9)
+sjp.glmer(model.glm)
+lme4::fixef(GLMER)
 
-# create binary response
-efc$hi_qol <- dicho(efc$quol_5)
-# prepare group variable
-efc$grp = as.factor(efc$e15relat)
-levels(x = efc$grp) <- get_labels(efc$e15relat)
-# data frame for fitted model
-mydf <- data.frame(hi_qol = efc$hi_qol,
-                   sex = to_factor(efc$c161sex),
-                   c12hour = efc$c12hour,
-                   neg_c_7 = efc$neg_c_7,
-                   grp = efc$grp)
-# fit glmer
-fit2 <- glmer(hi_qol ~ sex + c12hour + neg_c_7 + (1 | grp),
-              data = mydf, family = binomial("logit"))
+summary(GLMER)
 
-sjp.glmer(modelnull, type = "fe")
-plot(modelnull)
-library(ggplot2)
+sjp.glmer(GLMER, 
+          sort.est = "sort.all",
+          type = "pred",
+          vars = "dominant.freq") 
+y.offset = .4)
+          #vars = "antigenicTypes",
+          #type = "fe.slope")
 
-ggplot(data.frame(eta=predict(modelnull,type="link"),pearson=residuals(modelnull,type="pearson")),
-       aes(x=eta,y=pearson)) +
-  geom_point() +
-  theme_bw()
+sjp.glmer(GLMER, type = "fe.slope")
+sjp.int(GLMER, type = "cond")
+
+
+
+
+  
+  ##################### Random Forests Model ##########################
+library(rpart)
+library(e1071)
+library(rpart.plot)
+library(caret)
+
+fitControl <- trainControl(method = "cv", number = 5)
+
+cartGrid <- expand.grid(.cp=(1:50)*0.01)
+
+#decision tree
+tree_model <- train(success ~., data = traindata, method = "rpart", trControl = fitControl, tuneGrid = cartGrid)
+print(tree_model)
+
