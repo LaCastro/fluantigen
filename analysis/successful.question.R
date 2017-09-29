@@ -25,18 +25,18 @@ colnames(success.criteria) = c("length.days", "freq")
 # Read and combine files 
 # creates a data frame of snapshot of what the population looked like when it emerged 
 tropics.data = create_meta_data_all(dir = tropics.folder)
-
-days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = .2)
+antigen.frequencies = read_outputfiles(dir = tropics.folder, type = "/out.antigenFrequencies.txt")
+days.above.thres = calculate_days_above_thres(antigen.frequencies, threshold = .5)
 tropics.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> tropics.data
 
 already_lost = which(is.na(tropics.data$days.above))
 tropics.data$days.above[already_lost] = 0
 
 tropics.data %>%
-  mutate(success = ifelse(days.above > 365, "yes", "no")) -> tropics.data
+  mutate(success = ifelse(days.above > 45, "yes", "no")) -> tropics.data
 
 # Get the successful types
-success.types = return_success_types(antigen.data)
+success.types = return_success_types(tropics.data)
 
 ### For each successtype, go into antigen frequency all, filter and full out
 ##### Read in the antigen frequencies and then store those in a list 
@@ -198,7 +198,7 @@ for(thres in thresholds) {
     # Antigen Dynamics
     success.types = return_success_types(tropics.data )
     antigen.freq.success.df = filter_frequencies_success(success.types = success.types, 
-                                                         antigen.frequencies = tropics.antigen.frequencies)
+                                                         antigen.frequencies = antigen.frequencies)
     antigen.freq.success.df %>%
       filter(day < 7300) -> antigen.freq.success.df
     
@@ -216,8 +216,6 @@ for(thres in thresholds) {
       return(antigen)
     })
   
-    
-   head(antigen.freq.success.df)
     max.color = max(num.transitions$num.transitions)
     myColors = set_my_colors(max.color)
     
@@ -235,25 +233,36 @@ for(thres in thresholds) {
     
     ant.freq.success.l$cluster.number = as.factor(ant.freq.success.l$cluster.number)
     
-    ant.freq.success.l %>%
+    trials = c("tropics_100", "tropics_20")
+   
+     ant.freq.success.l %>%
       mutate(year = day/365) %>%
       mutate(prevalence = frequency*infected) %>%
       #mutate(prevalence = frequency) %>%
+      filter(.id %in% trials) %>%
       filter(prevalence > 0) %>%
-      ggplot(aes(x = year, y = prevalence, fill = cluster.number)) +
-      geom_area(color = "black", aes(color = antigentype, fill = )) +
-      #geom_line(aes(x = year, y = infected), color = "black") + 
+      ggplot(aes(x = year, y = prevalence*.0025, fill = cluster.number)) +
+      geom_area(color = "black", aes(color = antigentype, fill = cluster.number)) +
+      geom_line(aes(x = year, y = infected*.0025), color = "black") + 
       facet_wrap(~.id, scales = "free_y") +
       scale_color_manual(values = myColors) + 
       scale_fill_manual(values = myColors) +
-      labs(y = "Frequency", x = "Years") +
+      labs(y = "Prevalence per 100K", x = "Years") +
       scale_x_continuous(breaks = seq(1:20)) +
-      guides(col = FALSE) + guides(fill = FALSE) -> prev.plot
+      theme(strip.background = element_blank(),
+            strip.text.x = element_blank()) + 
+      guides(col = FALSE) + guides(fill = FALSE) -> too.high
     
+     save_plot(filename = "exploratory.figs/surv.thresholds.low.pdf",
+               too.low, base_height = 8, base_aspect_ratio = 1.8)
     save_plot(filename = paste0("exploratory.figs/prev.day", day.length, "thres", thres,".pdf"), prev.plot,
               base_height = 8, base_aspect_ratio = 1.6)
   }
 }
+
+threshold.def = plot_grid(too.low, correct, too.high, ncol = 1)
+save_plot(filename = "exploratory.figs/threshold.compare.pdf", threshold.def,
+          base_height = 8, base_aspect_ratio = 1.8)
 
 save_plot(filename = paste0(fig.folder, "prev.plot.pdf"), prev.plot,
           base_height = 8, base_aspect_ratio = 1.6)
