@@ -170,8 +170,8 @@ save_plot(trial.viral.metrics, filename = "exploratory.figs/trial.viral.metrics.
           base_height = 10, base_aspect_ratio = 1.6)
 
 #################################### 8/24/17
-thresholds = c(.15, .2)
-days = seq(30,90,20)
+thresholds = c(.2)
+days = seq(45)
 
 
 tropics.timeseries = read_outputfiles(tropics.folder, "/out.timeseries.txt")
@@ -183,7 +183,7 @@ tropics.antigen.frequencies <- read_outputfiles(tropics.folder, "/out.antigenFre
 for(thres in thresholds) {
   for(day.length in days) {
     
-    tropics.data = create_meta_data_all(dir = tropics.folder, success.criteria)
+    tropics.data = create_meta_data_all(dir = tropics.folder)
     days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = thres)
     tropics.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> tropics.data
     
@@ -196,7 +196,7 @@ for(thres in thresholds) {
     #### Plotting
     
     # Antigen Dynamics
-    success.types = return_success_types(tropics.data )
+    success.types = return_success_types(tropics.data)
     antigen.freq.success.df = filter_frequencies_success(success.types = success.types, 
                                                          antigen.frequencies = tropics.antigen.frequencies)
     antigen.freq.success.df %>%
@@ -235,13 +235,16 @@ for(thres in thresholds) {
     
     ant.freq.success.l$cluster.number = as.factor(ant.freq.success.l$cluster.number)
     
+    trials = sample(x = unique(ant.freq.success.l$.id), size = 20)
+    
     ant.freq.success.l %>%
       mutate(year = day/365) %>%
       mutate(prevalence = frequency*infected) %>%
       #mutate(prevalence = frequency) %>%
       filter(prevalence > 0) %>%
+      filter(.id %in% trials ) %>%
       ggplot(aes(x = year, y = prevalence, fill = cluster.number)) +
-      geom_area(color = "black", aes(color = antigentype, fill = )) +
+      geom_area(color = "black", aes(color = antigentype, fill = cluster.number)) +
       #geom_line(aes(x = year, y = infected), color = "black") + 
       facet_wrap(~.id, scales = "free_y") +
       scale_color_manual(values = myColors) + 

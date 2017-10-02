@@ -137,7 +137,8 @@ data_at_freq <- function(dir, correct.trials, surveillance.freq, meta.data, summ
 data.folder = "../data/tropics/tropics_20yr/"
 
 antigen.data = create_meta_data_all(dir = data.folder)
-
+mid.data = create_meta_data_all(dir = "../data/mid/correct_mid20yr/")
+north.data = create_meta_data_all(dir = "../data/north_20yrcorrect/")
 
 timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
 
@@ -157,6 +158,14 @@ antigen.data %>%
   mutate(success = ifelse(days.above > 45, "yes", "no")) -> antigen.data
 
 antigen.data %>%
+  filter(success == "yes") -> antigen.success
+
+antigen.data %>%
+  filter(success == "no") %>%
+  mutate(success = ifelse(final.max > .01, "transient", "no")) -> antigen.eliminated
+
+
+antigen.data %>%
   group_by(.id) %>%
   summarize(max.I = max(max.I),
             min.I = min(min.I)) -> infection.summary 
@@ -164,7 +173,7 @@ antigen.data %>%
 ## have to make data tidy before this 
 correct.trials = unique(antigen.data$.id)
 
-freq.05 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
-                         surveillance.freq = .05, summary.infection=infection.summary)
+freq.02 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
+                         surveillance.freq = .02, summary.infection=infection.summary)
 
 

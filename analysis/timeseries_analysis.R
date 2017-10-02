@@ -13,7 +13,7 @@ library(broom)
 source('analysis_functions.R'); source('plotting_functions.R')
 
 # Plotting Timeseries Analysis 
-data.folder = "../data/north/north_40yr/"
+data.folder = "../data/north/"
 fig.folder = "exploratory.figs/north_figures/"
 
 timeseries = read_outputfiles(dir = data.folder, type = "/out.timeSeries.txt")
@@ -24,12 +24,17 @@ trials1 = trials[1:25]
 trials2 = trials[26:50]
 trials3 = trials[51:75]
 trials4 = trials[76:100]
-
+trials5 = trials[101:125]
+trials6 = trials[126:151]
+trials7 = trials[152:175]
+trials8 = trials[176:200]
+  
+  
 timeseries %>%
-  filter(.id %in% trials4) -> timeseries.sub
+  filter(.id %in% trials8) -> timeseries.sub
 
-twenty.TS.4 = plot_timeseries_id(timeseries.sub)
-save_plot(twenty.TS.4, filename = paste0(fig.folder, "twenty.TS.4.pdf"), base_height = 8, base_aspect_ratio = 1.8)
+twenty.TS.2.8 = plot_timeseries_id(timeseries.sub)
+save_plot(twenty.TS.2.8, filename = paste0(fig.folder, "twenty.TS.2.8.pdf"), base_height = 8, base_aspect_ratio = 1.8)
 
 ########### Tropics #######################################
 

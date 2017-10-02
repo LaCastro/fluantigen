@@ -16,17 +16,17 @@ exclude.emerge = c("oriAntigen", "postAntigen", "cases", "cumulativeTypes",
 data = antigen.data[, -which(predictorNames%in%exclude.emerge)]
 
 
-predictorNames = colnames(freq.05)
+predictorNames = colnames(freq.02)
 excluded = c("postAntigen", "oriAntigen",  "day.1", "date", "totalN", "totalR",
              "totalCases", "dominant.type", "totalI", "max.I", "min.I")
-data = freq.05[, -which(predictorNames%in%excluded)]
+data = freq.02[, -which(predictorNames%in%excluded)]
 
 data <- within(data, {
   success <- factor(success, levels=c("yes", "no"), labels = c(1,0))
   .id <- factor(.id)
   day <- as.numeric(as.character(day))
-  #mutLoad <- as.numeric(as.character(mutLoad))
-  #distance <- as.numeric(as.character(distance))
+  mutLoad <- as.numeric(as.character(mutLoad))
+  distance <- as.numeric(as.character(distance))
   simDay <- as.numeric(as.character(simDay))
 })
 
@@ -54,19 +54,16 @@ dataScaled%>%
   group_by(.id)%>%
   summarize(mutations = n())%>%
   summarize(mean.mutations = mean(mutations)/number.years.rep)
-
+nrow(dataScaled)
 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
 dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
-
 dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
 
 
 trial.all <- glmer(success ~.-.id -quarter+ (1|.id), data = dataScaled, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
-
 vif.mer(trial.all)
-
 vif.included = c("success",
                  "quarter",
                  "distance",
@@ -110,7 +107,6 @@ dataPurged %>%
   gather(key = variable, value = value, -trial, -success) -> data.l
 
 data.l$value = as.numeric(as.character(data.l$value))
-str(data.l)
 
 single.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
@@ -131,12 +127,12 @@ single.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
     glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
     glmerperf[n] <- glmer.ROC$auc
   }
-  single.performance=mean(glmerperf)
-  single.aic=mean(aic)
-#  single.coef=mean(coef)
-  single.ref.sd=mean(ref.sd)
+  s.performance=mean(glmerperf)
+  s.aic=mean(aic)
+  s.coef=mean(coef)
+  s.ref.sd=mean(ref.sd)
   print(x$variable[1])
-  return(cbind(single.performance, single.aic, single.ref.sd))
+  return(cbind(s.performance, s.aic, s.coef, s.ref.sd))
 })
 
 single.model.results
@@ -224,8 +220,9 @@ double.model.results
 
 ############################### third term results
 dataPurged %>%
-  gather(key = variable, value = value, -trial, -success, -dominant.freq, -netau) -> data.l
+  gather(key = variable, value = value, -trial, -success, -mutLoad, -netau) -> data.l
 data.l$value=as.numeric(data.l$value)
+
 
 third.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
@@ -236,7 +233,7 @@ third.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ dominant.freq + netau+ value  + (1 | trial), data = traindata, family="binomial", 
+    GLMER <- lme4::glmer(success ~ mutLoad + netau+ value  + (1 | trial), data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=10)
     #GLMER <- glm(success ~ normalize.I + covBetaSigma + value, data = traindata, family="binomial")
     
@@ -261,11 +258,11 @@ third.model.results
 ############################### fourth term results
 dataPurged %>%
   gather(key = variable, value = value, -trial, -success, 
-         -dominant.freq, -netau, -varR, -normalize.I,-tmrca) -> data.l
+         -normalize.I, -netau, -antigenicDiversity, -meanR) -> data.l
 data.l$value=as.numeric(data.l$value)
 # Remember to change the coefficien
 
-six.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+five.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
@@ -274,12 +271,12 @@ six.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
     
-     GLMER <- lme4::glmer(success ~   dominant.freq + netau + varR + normalize.I+value +tmrca+(1 | trial), data = traindata, family="binomial", 
+     GLMER <- lme4::glmer(success ~  normalize.I + netau + antigenicDiversity + meanR+ value+ (1 | trial), data = traindata, family="binomial", 
                            control = glmerControl(optimizer="bobyqa"),nAGQ=10)
     #GLMER <- glm(success ~ diversity + antigenicTypes + covBetaSigma + value, data = traindata, family="binomial")
     
     aic[n] <- extractAIC(GLMER)[2]
-    coef[n] <- summary(GLMER)$coefficients[7,4]
+    coef[n] <- summary(GLMER)$coefficients[6,4]
     ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
     glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
     glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
@@ -294,11 +291,11 @@ six.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
   return(cbind(performance, aic))
 })
 
-six.model.results
+five.model.results
 
 #################### anova tests
 dataPurged %>%
-  select(trial,success, netau, dominant.freq, varR, normalize.I, tmrca, meanR) -> data.l
+  select(trial,success, netau, normalize.I, antigenicDiversity, meanR, serialInterval) -> data.l
 
 for(n in 1:folds.length) { 
   test.ids = folds$subsets[folds$which==n]
@@ -310,11 +307,11 @@ for(n in 1:folds.length) {
   testdata = data.l[which(data.l$trial %in% test.trials), ]
   traindata = data.l[-which(data.l$trial %in% test.trials),]
   
-  model.null <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I+  (1 | trial),
+  model.null <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity + (1 | trial),
                                                    data = traindata, family="binomial", 
                                                    control = glmerControl(optimizer="bobyqa"),nAGQ=10)
   
-  model.test <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca  + (1 | trial),
+  model.test <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity + meanR +  (1 | trial),
                             data = traindata, family="binomial", 
                             control = glmerControl(optimizer="bobyqa"),nAGQ=10)
   
@@ -327,11 +324,8 @@ for(n in 1:folds.length) {
 ######################### Interaction Results 
 dataPurged %>%
   #gather(key = variable, value = value, -trial, -success, -normalize.I, -covBetaSigma, antigenicTypes)  -> data.l
-  select(trial,success, netau, dominant.freq, varR, normalize.I, tmrca) -> data.l
+  select(trial,success, netau,normalize.I, antigenicDiversity, meanR) -> data.l
 
-data.l$value=as.numeric(data.l$value)
-
-coeff=matrix(nrow = folds.length, ncol = 3)
 coeff=rep(NA,folds.length)
 
 for(n in 1:folds.length) { 
@@ -341,28 +335,24 @@ for(n in 1:folds.length) {
     testdata = data.l[which(data.l$trial %in% test.trials), ]
     traindata = data.l[-which(data.l$trial %in% test.trials),]
 
-    model.null <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca  + 
-                                normalize.I*varR + (1 | trial),
+    model.null <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity+ meanR + (1 | trial),
                           data = traindata, family="binomial", 
                           control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-  
-    print(summary(model.null))
-    model.int <- lme4::glmer(success ~ netau+dominant.freq + varR+normalize.I + tmrca + 
-                               normalize.I*varR + varR*tmrca + (1 | trial),
+
+    model.int <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity+ meanR + 
+                              antigenicDiversity*meanR + (1 | trial),
                               data = traindata, family="binomial", 
                               control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-    
+    print(summary(model.null))
   # coeff[n,] <- summary(model.9)[[10]][9:11,4]
-    
-    
-    coef[n] <- summary(model.int)$coefficients[6,4]
+    coef[n] <- summary(model.int)$coefficients[5,4]
     ref.sd[n] <- sqrt(VarCorr(model.int)$trial[1])
     aic[n] <- extractAIC(model.int)[2]
     glmer.probs <- predict(model.int, newdata=testdata, type="response", allow.new.levels=TRUE)
     glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
     glmerperf[n] <- glmer.ROC$auc
 
-    #print(anova(model.null, model.int, test="Chisq"))
+   # print(anova(model.null, model.int, test="Chisq"))
   }
 
 mean(glmerperf)

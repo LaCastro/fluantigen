@@ -180,3 +180,97 @@ combined.antigen.summary %>%
 plot_grid(summary.plot1, summary.plot2, nrow = 2) -> summary.grid
 save_plot(filename = "exploratory.figs//antigen.success.summary.pdf", 
           summary.grid, base_height = 8, base_aspect_ratio = 2)
+
+
+
+###################################
+# Testing quarter to see where it lines up - trying mid seasonality
+
+antigen.data
+
+tropics.timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
+mid.timeseries = read_outputfiles(dir = "../data/mid/correct_mid20yr/", type = "/out.timeseries.txt")
+north.timeseries = read_outputfiles(dir = "../data/north_20yrcorrect/", type = "/out.timeseries.txt")
+
+head(tropics.timeseries)
+
+tropics.timeseries %>%
+  mutate(time.of.year = date-floor(date)) %>%
+  mutate(year = floor(time.of.year)) %>%
+  mutate(quarter = ifelse(time.of.year < .25, 1,
+                          ifelse(time.of.year < .5, 2,
+                                 ifelse(time.of.year < .75, 3,4)))) %>%
+  mutate(quarter = as.factor(quarter)) %>%
+  select(.id, date, year, totalI, time.of.year, quarter) -> tropics.timeseries
+  
+mid.timeseries %>%
+  mutate(time.of.year = date-floor(date)) %>%
+  mutate(year = floor(time.of.year)) %>%
+  mutate(quarter = ifelse(time.of.year < .25, 1,
+                          ifelse(time.of.year < .5, 2,
+                                 ifelse(time.of.year < .75, 3,4)))) %>%
+  mutate(quarter = as.factor(quarter)) %>%
+  select(.id, date, year, totalI, time.of.year, quarter) -> mid.timeseries
+
+
+north.timeseries %>%
+  mutate(time.of.year = date-floor(date)) %>%
+  mutate(year = floor(time.of.year)) %>%
+  mutate(quarter = ifelse(time.of.year < .25, 1,
+                          ifelse(time.of.year < .5, 2,
+                                 ifelse(time.of.year < .75, 3,4)))) %>%
+  mutate(quarter = as.factor(quarter)) %>%
+  select(.id, date, year,  totalI, time.of.year, quarter) -> north.timeseries
+
+
+unique(north.timeseries$.id)
+
+
+quarter1.2 = data.frame(seq(.25,19.25, 1));colnames(quarter1.2) = "date"
+quarter2.3 = data.frame(seq(.5, 19.5, 1)); colnames(quarter2.3) = "date"
+quarter3.4 = data.frame(seq(.75,19.75,1)); colnames(quarter3.4) = "date"
+quarter4.1 = data.frame(seq(0,20,1)); colnames(quarter4.1) = "date"
+
+north.timeseries %>%
+  filter(.id == "north_57") %>%
+  filter(year < 10) %>%
+  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
+  coord_cartesian(xlim = c(0,10), ylim = c(0,200)) + 
+  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
+  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
+  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
+  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) +
+  scale_x_continuous(breaks = seq(0,10,1)) +
+  labs(x = "Year", y = "Infected per 100K", title  = "Temperate Seasonal Forcing") -> temperate
+  
+unique(mid.timeseries$.id)
+mid.timeseries %>%
+  filter(.id == "mid_10") %>%
+  filter(year < 10) %>%
+  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
+  coord_cartesian(xlim = c(0,10)) + 
+  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
+  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
+  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
+  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) +
+  labs(x = "Year", y = "Infected per 100K", title = "Mid-Level Seasonal Forcing") +
+  scale_x_continuous(breaks = seq(0,10,1)) -> mid.level
+
+
+tropics.timeseries %>%
+  filter(.id == "tropics_20") %>%
+  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
+  coord_cartesian(xlim = c(0,10)) + 
+  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
+  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
+  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
+  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) + 
+  labs(x = "Year", y = "Infected per 100K", title = "No Seasonal Forcing") +
+  scale_x_continuous(breaks = seq(0,10,1)) -> tropics
+
+seasonal.forcing  = plot_grid(tropics, mid.level, temperate, ncol = 1) 
+save_plot(seasonal.forcing, filename = "exploratory.figs/seasonal.forcing.pdf",
+          base_height = 8,
+          base_aspect_ratio = 1.5)
+  
+
