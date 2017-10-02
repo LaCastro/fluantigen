@@ -56,7 +56,7 @@ plot_metric_histogram <- function(data.l, metrics) {
     labs(x = "Count", y  = "Value")
 }
 
-plot_full_output <- function(timeseries, trial, variable.set) {
+plot_full_output <- function(timeseries, trial, variable.set, tropics.meta.data) {
   # Plot the timeseries of a particluar metric set for a particular run 
   
   timeseries %>%
@@ -66,12 +66,12 @@ plot_full_output <- function(timeseries, trial, variable.set) {
     labs(x = "Year", y = "Infected", title = trial) +
     scale_x_continuous(breaks = seq(1:20))-> time.series
   
-  success.criteria = as.data.frame(matrix( nrow = 1, ncol = 2, data = c(180, .1)))
-  colnames(success.criteria) = c("length.days", "freq")
+  #success.criteria = as.data.frame(matrix( nrow = 1, ncol = 2, data = c(180, .1)))
+  #colnames(success.criteria) = c("length.days", "freq")
   
   # Plot succesful dynamics
-  tropics.data = create_meta_data(sim.dir = paste0(tropics.folder, trial))
-  thres = .2
+  #tropics.data = create_meta_data(sim.dir = paste0(tropics.folder, trial))
+  #thres = .2
   tropics.antigen.frequencies = read_outputfiles(tropics.folder, "/out.antigenFrequencies.txt")
   days.above.thres = calculate_days_above_thres(tropics.antigen.frequencies, threshold = thres)
   tropics.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype")) -> tropics.data
@@ -81,7 +81,6 @@ plot_full_output <- function(timeseries, trial, variable.set) {
   
   tropics.data %>%
     mutate(success = ifelse(days.above > 45, "yes", "no")) -> tropics.data
-  
   
   tropics.data %>%
     filter(success == "yes") %>%
