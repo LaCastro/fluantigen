@@ -13,7 +13,7 @@ library(broom)
 source('analysis_functions.R'); source('plotting_functions.R')
 
 # Plotting Timeseries Analysis 
-data.folder = "../data/north/north_40yr/"
+data.folder = "../data/tropics/correct_trials/"
 fig.folder = "exploratory.figs/north_figures/"
 
 timeseries = read_outputfiles(dir = data.folder, type = "/out.timeSeries.txt")
@@ -26,7 +26,7 @@ trials3 = trials[51:75]
 trials4 = trials[76:100]
 
 timeseries %>%
-  filter(.id %in% trials4) -> timeseries.sub
+  filter(.id %in% trials1) -> timeseries.sub
 
 twenty.TS.4 = plot_timeseries_id(timeseries.sub)
 save_plot(twenty.TS.4, filename = paste0(fig.folder, "twenty.TS.4.pdf"), base_height = 8, base_aspect_ratio = 1.8)
@@ -45,14 +45,16 @@ trackAntigen <- read_outputfiles(tropics.folder, "/out.trackAntigenSeries.txt")
 viralFitness <- read_outputfiles(tropics.folder, "/out.viralFitnessSeries.txt")
 
 variable.sets = c("timeSeries", "trackAntigen", "viralFitness")
+
 variable.sets = c("trackAntigen")
 trials = unique(tropics.timeseries$.id)
 incorrect = c("tropics_trial3", "tropics_trial4", "tropics_trial12")
 trials = trials[-which(trials %in% incorrect)]
+trials
 
 a_ply(.data = trials, .margins = 1, function(trial) {
   for(set in variable.sets) {
-    plot.full.output = plot_full_output(timeseries = tropics.timeseries, trial = trial, variable.set = set)
+    plot.full.output = plot_full_output(timeseries = timeseries, trial = trial, variable.set = set)
     save_plot(filename = paste0("exploratory.figs/full.output.", trial, ".", set, ".pdf"),
               plot = plot.full.output,
               base_height = 8, base_aspect_ratio = 1.6)

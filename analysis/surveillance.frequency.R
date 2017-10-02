@@ -135,10 +135,7 @@ data_at_freq <- function(dir, correct.trials, surveillance.freq, meta.data, summ
 ############################################################################################################
 
 data.folder = "../data/tropics/tropics_20yr/"
-
 antigen.data = create_meta_data_all(dir = data.folder)
-
-
 timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
 
 ### For north, going to calculate the timeseries relative to what it's like below 10 years
@@ -163,8 +160,10 @@ antigen.data %>%
 
 ## have to make data tidy before this 
 correct.trials = unique(antigen.data$.id)
+correct.trials = c("tropics_100", "tropics_20")
 
-freq.05 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
-                         surveillance.freq = .05, summary.infection=infection.summary)
+
+freq.15 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
+                         surveillance.freq = .15, summary.infection=infection.summary)
 
 
