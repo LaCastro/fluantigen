@@ -29,6 +29,18 @@ set_my_colors <- function(length.of.success) {
   return(myColors)
 }
 
+set_my_colors_transient <- function(length.of.success) {
+  myColors = colorRampPalette(brewer.pal(8, "Blues"))(length.of.success)
+  return(myColors)
+}
+
+set_my_colors_success <- function(length.of.success) {
+  myColors = colorRampPalette(brewer.pal(8, "OrRd"))(length.of.success)
+  return(myColors)
+}
+
+
+
 plot_metric_density <- function(data.l, metrics) {
   # plot the differences in variables based on success
   # wraps for different metrics 

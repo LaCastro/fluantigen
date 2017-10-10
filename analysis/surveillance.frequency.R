@@ -2,16 +2,6 @@ rm(list=ls())
 source('analysis_functions.R')
 source('plotting_functions.R')
 
-library(plyr)
-library(tidyverse)
-library(ggplot2)
-library(cowplot)
-library(scales)
-library(reshape2)
-library(data.table)
-library(RColorBrewer)
-library(broom)
-
 find_data_at_freq <- function(sim.dir, trial.meta.data, surveillance.freq, type) {
   # filter data to look at either successful or unsuccesful depending on desire
   trial.meta.data %>%

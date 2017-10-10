@@ -21,33 +21,42 @@ excluded = c("postAntigen", "oriAntigen",  "day.1", "date", "totalN", "totalR",
              "totalCases", "dominant.type", "totalI", "max.I", "min.I")
 data = freq.02[, -which(predictorNames%in%excluded)]
 
+
+data = growth.data.scaled.l
+
+data$success = as.factor(data$success)
+data$selected.antigen = as.factor(data$selected.antigen)
+
 data <- within(data, {
-  success <- factor(success, levels=c("yes", "no"), labels = c(1,0))
+  success <- factor(success, levels=c("Est.", "Transient"), labels = c(1,0))
   .id <- factor(.id)
-  day <- as.numeric(as.character(day))
-  mutLoad <- as.numeric(as.character(mutLoad))
-  distance <- as.numeric(as.character(distance))
-  simDay <- as.numeric(as.character(simDay))
+  #day <- as.numeric(as.character(day))
+  selected.antigen <- as.factor(selected.antigen)
+#  mutLoad <- as.numeric(as.character(mutLoad))
+#  distance <- as.numeric(as.character(distance))
+#  simDay <- as.numeric(as.character(simDay))
 })
 
 #data %>%
 #  filter(day > (3*365) & day < 3650) -> dataBurn
 
 data %>%
-  filter(day > 365) -> dataBurn
-
-number.years.rep = 17
+  filter(day > 365*3) -> dataBurn
+dataBurn = data
+#number.years.rep = 17
 
 ##### When the simDay isn't in terms of the burn in day, don't need the -1 and -3 
-dataBurn %>%
-  mutate(time.of.year = (simDay)-floor((x = day/365))) %>%
-  mutate(quarter = ifelse(time.of.year < .25, 1,
-                          ifelse(time.of.year < .5, 2,
-                                 ifelse(time.of.year < .75, 3,4)))) -> dataScaled
+#dataBurn %>%
+#  mutate(time.of.year = (simDay)-floor((x = day/365))) %>%
+#  mutate(quarter = ifelse(time.of.year < .25, 1,
+#                          ifelse(time.of.year < .5, 2,
+#                                 ifelse(time.of.year < .75, 3,4)))) -> dataScaled
 
-dataScaled$quarter = as.factor(dataScaled$quarter)
+#dataScaled$quarter = as.factor(dataScaled$quarter)
 
 # Take our any data that's before 3 years
+table(dataBurn$success)/nrow(dataBurn)
+dataScaled = dataBurn
 table(dataScaled$success)/nrow(dataScaled)
 
 dataScaled%>%
@@ -57,14 +66,30 @@ dataScaled%>%
 nrow(dataScaled)
 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
-dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
+
+## Variables to remove -- netau and mean Load ratio 
+dataScaled %>%
+  spread(key = var.id, value = value) %>%
+  mutate_if(is.numeric, scale) -> data.wide
+
+data.wide = data.wide[,-which(colnames(data.wide) %in% c("first_meanLoad_ratio", "second_meanLoad_ratio",
+                                                         "second_netau_diff", "second_netau_ratio",
+                                                         "first_netau_diff", "first_netau_ratio"))]
 
 
-trial.all <- glmer(success ~.-.id -quarter+ (1|.id), data = dataScaled, family = binomial,
+#dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
+#dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
+
+head(data.wide)
+trial.all <- glmer(success ~.-.id-selected.antigen  + (1|.id), data = data.wide, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
-vif.mer(trial.all)
-vif.included = c("success",
+
+
+vif.results = data.frame(vif.mer(trial.all))
+vif.results %>%
+  filter(vif.mer.trial.all. > 10) -> above.mer
+
+vif.excluded = c("success",
                  "quarter",
                  "distance",
                  "mutLoad",
@@ -82,14 +107,24 @@ vif.included = c("success",
                  "meanR",
                  "covBetaSigma")
 
-dataPurged = dataScaled[,which(colnames(dataScaled) %in% vif.included)]
-dataPurged = cbind(dataScaled[,".id"], dataPurged)
+vif.excluded = c("first_totalS_diff", "first_totalS_ratio", "first_totalS_sd", 
+                 "second_totalS_diff", "second_totalS_ratio", "second_totalS_sd",
+                 "first_meanSigma_diff", "first_meanSigma_ratio", "first_meanSigma_sd",
+                 "second_meanSigma_diff", "second_meanSigma_ratio", "second_meanSigma_sd",
+                 "first_varSigma_diff", "first_varSigma_ratio", "first_varSigma_sd",
+                 "second_varSigma_diff", "second_varSigma_ratio", "second_varSigma_sd",
+                 "first_meanR_diff", "first_meanR_ratio", "first_meanR_sd",
+                 "second_meanR_diff", "second_meanR_ratio", "second_meanR_sd")
+
+dataPurged = dataScaled[,which(colnames(dataScaled) != "meanSigma")]
+dataPurged = data.wide[,-which(colnames(data.wide) %in% vif.excluded)]
 colnames(dataPurged)[1] = "trial"
 
-trial.purged <- lme4::glmer(success ~.-trial -quarter+ (1 | trial), data = dataPurged, family = binomial,
+colnames(dataPurged)
+trial.purged <- lme4::glmer(success ~.-.id-selected.antigen  + (1 | .id), data = dataPurged, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
 
-vif.mer(trial.purged)
+vif.results = data.frame(vif.mer(trial.purged))
 
 ################### Doing K-cross validation 
 outcomeName = "success"
@@ -103,16 +138,22 @@ aic = rep(0,folds.length)
 coef = rep(0,folds.length)
 ref.sd = rep(0,folds.length)
 
+head(dataPurged)
 dataPurged %>%
-  gather(key = variable, value = value, -trial, -success) -> data.l
+  ungroup() %>%
+  gather(key = variable, value = value, 4:ncol(dataPurged)) -> data.scaled.l
 
-data.l$value = as.numeric(as.character(data.l$value))
 
-single.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+data.scaled.l$value = as.numeric(as.character(data.scaled.l$value))
+str(data.scaled.l)
+n=1
+variable = "first_antigenicDiversity_diff"
+
+single.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
-    test.trials = unique(data.l$trial)[test.ids]
+    test.trials = unique(data.scaled.l$trial)[test.ids]
     
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
@@ -183,20 +224,20 @@ for(n in 1:folds.length) {
 
 ########################### second.model.results 
 dataPurged %>%
-  gather(key = variable, value = value, -trial, -success, -netau) -> data.l
-data.l$value=as.numeric(data.l$value)
+  gather(key = variable, value = value, -trial, -success, -second_meanBeta_sd) -> data.scaled.l
+data.scaled.l$value=as.numeric(data.scaled.l$value)
 
 
-double.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+double.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
-    test.trials = unique(data.l$trial)[test.ids]
+    test.trials = unique(data.scaled.l$trial)[test.ids]
     
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ netau + value  + (1 | trial), data = traindata, family="binomial", 
+    GLMER <- lme4::glmer(success ~ second_meanBeta_sd + value  + (1 | trial), data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=10)
     
     #GLMER <- glm(success ~ normalize.I + value, data = traindata, family="binomial")
@@ -220,20 +261,20 @@ double.model.results
 
 ############################### third term results
 dataPurged %>%
-  gather(key = variable, value = value, -trial, -success, -mutLoad, -netau) -> data.l
-data.l$value=as.numeric(data.l$value)
+  gather(key = variable, value = value, -trial, -success, -second_antigenicTypes_ratio, -second_meanBeta_sd) -> data.scaled.l
+data.scaled.l$value=as.numeric(data.scaled.l$value)
 
 
-third.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+third.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
-    test.trials = unique(data.l$trial)[test.ids]
+    test.trials = unique(data.scaled.l$trial)[test.ids]
     
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ mutLoad + netau+ value  + (1 | trial), data = traindata, family="binomial", 
+    GLMER <- lme4::glmer(success ~ second_antigenicTypes_ratio +second_meanBeta_sd + value  + (1 | trial), data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=10)
     #GLMER <- glm(success ~ normalize.I + covBetaSigma + value, data = traindata, family="binomial")
     
@@ -257,26 +298,29 @@ third.model.results
 
 ############################### fourth term results
 dataPurged %>%
-  gather(key = variable, value = value, -trial, -success, 
-         -normalize.I, -netau, -antigenicDiversity, -meanR) -> data.l
-data.l$value=as.numeric(data.l$value)
+  gather(key = variable, value = value, -trial, -success, -selected.antigen, 
+         -second_meanBeta_sd, -second_antigenicTypes_ratio,-first_diversity_sd, -second_covBetaSigma_ratio, -first_normalize.I_sd,-second_diversity_ratio) -> data.scaled.l
+data.scaled.l$value=as.numeric(data.scaled.l$value)
 # Remember to change the coefficien
 
-five.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
+seven.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
-    test.trials = unique(data.l$trial)[test.ids]
+    test.trials = unique(data.scaled.l$trial)[test.ids]
     
     testdata = x[which(x$trial %in% test.trials), ]
     traindata = x[-which(x$trial %in% test.trials),]
     
-     GLMER <- lme4::glmer(success ~  normalize.I + netau + antigenicDiversity + meanR+ value+ (1 | trial), data = traindata, family="binomial", 
+     GLMER <- lme4::glmer(success ~  second_meanBeta_sd + second_antigenicTypes_ratio + 
+                            first_diversity_sd + second_covBetaSigma_ratio + first_normalize.I_sd +
+                            second_diversity_ratio+
+                            value + (1 | trial), data = traindata, family="binomial", 
                            control = glmerControl(optimizer="bobyqa"),nAGQ=10)
     #GLMER <- glm(success ~ diversity + antigenicTypes + covBetaSigma + value, data = traindata, family="binomial")
     
     aic[n] <- extractAIC(GLMER)[2]
-    coef[n] <- summary(GLMER)$coefficients[6,4]
+    coef[n] <- summary(GLMER)$coefficients[8,4]
     ref.sd[n] <- sqrt(VarCorr(GLMER)$trial[1])
     glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
     glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
@@ -291,27 +335,29 @@ five.model.results = ddply(data.l, .var = c("variable"), .fun = function(x) {
   return(cbind(performance, aic))
 })
 
-five.model.results
+four.model.results
 
 #################### anova tests
+head(dataPurged)
+
 dataPurged %>%
-  select(trial,success, netau, normalize.I, antigenicDiversity, meanR, serialInterval) -> data.l
+  dplyr::select(trial,success, first_diversity_sd, second_meanBeta_sd, second_antigenicTypes_ratio) -> data.scaled.l
 
 for(n in 1:folds.length) { 
   test.ids = folds$subsets[folds$which==n]
-  test.trials = unique(data.l$trial)[test.ids]
+  test.trials = unique(data.scaled.l$trial)[test.ids]
   
   #  testdata = x[which(x$trial %in% test.trials), ]
   #  traindata = x[-which(x$trial %in% test.trials),]
   
-  testdata = data.l[which(data.l$trial %in% test.trials), ]
-  traindata = data.l[-which(data.l$trial %in% test.trials),]
+  testdata = data.scaled.l[which(data.scaled.l$trial %in% test.trials), ]
+  traindata = data.scaled.l[-which(data.scaled.l$trial %in% test.trials),]
   
-  model.null <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity + (1 | trial),
+  model.null <- lme4::glmer(success ~ second_meanBeta_sd + second_antigenicTypes_ratio + (1 | trial),
                                                    data = traindata, family="binomial", 
                                                    control = glmerControl(optimizer="bobyqa"),nAGQ=10)
   
-  model.test <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity + meanR +  (1 | trial),
+  model.test <- lme4::glmer(success ~ second_meanBeta_sd + second_antigenicTypes_ratio + first_diversity_sd + (1 | trial),
                             data = traindata, family="binomial", 
                             control = glmerControl(optimizer="bobyqa"),nAGQ=10)
   
@@ -323,19 +369,19 @@ for(n in 1:folds.length) {
 
 ######################### Interaction Results 
 dataPurged %>%
-  #gather(key = variable, value = value, -trial, -success, -normalize.I, -covBetaSigma, antigenicTypes)  -> data.l
-  select(trial,success, netau,normalize.I, antigenicDiversity, meanR) -> data.l
+  #gather(key = variable, value = value, -trial, -success, -normalize.I, -covBetaSigma, antigenicTypes)  -> data.scaled.l
+ dplyr:: select(trial,success, first_diversity_sd, second_meanBeta_sd, second_antigenicTypes_ratio ) -> data.scaled.l
 
 coeff=rep(NA,folds.length)
 
 for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
-    test.trials = unique(data.l$trial)[test.ids]
+    test.trials = unique(data.scaled.l$trial)[test.ids]
     
-    testdata = data.l[which(data.l$trial %in% test.trials), ]
-    traindata = data.l[-which(data.l$trial %in% test.trials),]
+    testdata = data.scaled.l[which(data.scaled.l$trial %in% test.trials), ]
+    traindata = data.scaled.l[-which(data.scaled.l$trial %in% test.trials),]
 
-    model.null <- lme4::glmer(success ~ netau+normalize.I + antigenicDiversity+ meanR + (1 | trial),
+    model.null <- lme4::glmer(success ~ second_meanBeta_sd + second_antigenicTypes_ratio + first_diversity_sd + (1 | trial),
                           data = traindata, family="binomial", 
                           control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
