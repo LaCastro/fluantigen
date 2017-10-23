@@ -11,6 +11,7 @@ library(reshape2)
 library(data.table)
 library(RColorBrewer)
 library(broom)
+library(data.table)
 
 ############################################# 
 #### On one trial, figure out time points 
@@ -98,7 +99,15 @@ antigen.data$days.above[already_lost] = 0
 
 antigen.data %>%
   mutate(success = ifelse(days.above > 45, "Est.", ifelse(final.max > .1, "Transient", "no"))) -> antigen.data
-         
+
+antigens.analyze %>%
+  mutate(mutLoad = as.numeric(mutLoad),
+         distance = as.numeric(as.character(distance))) %>%
+  ggplot(aes(x =distance, y =life.length/365, color = success)) + geom_point() +  
+  scale_color_manual(values = c("purple", "orange")) + 
+  labs(x = "Antigenic Distance", y  = "Life Length (Years) ", color  = "Antigen Fate" ) -> antigenic.effect.plot
+
+
 correct.trials = c("tropics_20", "tropics_100", "tropics_14", "tropics_56", "tropics_53")
 correct.trials.2 = c("tropics_20", "tropics_100", "tropics_14", "tropics_56", "tropics_53",
                      "tropics_trial", "tropics_93", "tropics_2", "tropics_70", "tropics_76", "tropics_80",
@@ -112,11 +121,12 @@ two.emerge = day_at_freq(dir=data.folder, correct.trials, surveillance.freq = .0
 five.emerge = day_at_freq(dir=data.folder, correct.trials, surveillance.freq = .05, meta.data = antigen.data)
 ten.emerge = day_at_freq(dir = data.folder, correct.trials, surveillance.freq = .1, meta.data = antigen.data)
 
+)
 ##########
 # Have to combine what the emergence day was 
 
 antigen.data %>%
-  select(.id, day, postAntigen, success) %>%
+  dplyr::select(.id, day, postAntigen, success) %>%
   mutate(postAntigen = as.numeric(postAntigen)) %>%
   #filter(.id %in% correct.trials.2) %>%
   filter(success != "no") %>% 

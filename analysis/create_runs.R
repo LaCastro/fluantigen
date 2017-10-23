@@ -13,15 +13,15 @@ if(grepl('lacastro', Sys.info()['login'])) {
 
 
 ## First give number of simulations you want to run
-N = seq(from = 101, to = 300, by = 1)
-type.sim = "north"
+N = seq(from = 1, to = 100, by = 1)
+type.sim = "tropics"
 
-sink('../launcher/run_trialsN.txt') # creates a text file in the launcher
+sink('../launcher/run_trials.txt') # creates a text file in the launcher
 
 for(n in N) {
     startCmd <- "java -jar trackAntigen.jar"
     dirName <- paste0(" ", type.sim, "_" , n)
-    parmFile <- " parameters_north.yml"
+    parmFile <- " parameters_tropics.yml"
     outputDir <- " simdata"
     grbCmd <- " -XX:+UseSerialGC"
 #    memoryCmd <- " -Xmx5G "

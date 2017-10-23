@@ -356,6 +356,8 @@ public class Simulation {
 		stream.println();
 	}
 
+	
+	
 	public void printFrequencies(PrintStream stream, ArrayList<Double> currentFrequencies, ArrayList<Integer> typeList) {
 		// want to put current infected count here 
 		int infected = this.getI();
@@ -365,6 +367,29 @@ public class Simulation {
 		}
 	}
 
+	
+	public void printTypeMutations(PrintStream stream, ArrayList<Double> typeMutations, ArrayList<Double> varMutationLoads, ArrayList<Integer> typeList){
+		for (int i = 0; i < typeMutations.size(); i++) {
+			stream.printf("%d\t%d\t%.6f\t%.6f", (Parameters.day-1), typeList.get(i), typeMutations.get(i), varMutationLoads.get(i)); 
+			stream.println();
+		}
+	}
+	
+	
+	public void printViralFitnessDistTypes(PrintStream stream, VirusFitnessDistType fitDistType) {
+		stream.printf("%d\t%.6f\t%d\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f", (Parameters.day-1), Parameters.getDate(),
+				fitDistType.antigenicType, fitDistType.meanMut, fitDistType.varMut, fitDistType.meanR, fitDistType.varR,
+				fitDistType.meanBeta, fitDistType.varBeta, fitDistType.meanSigma, fitDistType.varSigma);
+		stream.println();
+	}
+	
+	public void printTypeImmunities(PrintStream stream, ArrayList<Double> typeImmunities, ArrayList<Integer> typeList) {
+		for (int i = 0; i <typeImmunities.size(); i++) {
+			stream.printf("%d\t%d\t%.6f", (Parameters.day-1), typeList.get(i), typeImmunities.get(i));
+			stream.println();
+		}
+	}
+	
 	public void printTrackAntigens(PrintStream stream) {
 		stream.printf("%d\t%.4f\t%.4f\t%.4f\t%.5f\t%.4f\t%d\t%d\t%d\t%d\t%d\t%.3f\t%d\t%d", 
 				(Parameters.day-1), getDiversity(), getTmrca(), getNetau(), getSerialInterval(), getAntigenicDiversity(), 
@@ -409,6 +434,11 @@ public class Simulation {
 		stream.print("day\tsimDay\tmeanR\tvarR\tmeanBeta\tvarBeta\tmeanSigma\tvarSigma\tcovBetaSigma");
 		stream.println();
 	}
+	
+	public void printFitnessTypeHeader(PrintStream stream) {
+		stream.print("day\tsimDay\tantigenType\tmeanMut\tvarMut\tmeanR\tvarR\tmeanBeta\tvarBeta\tmeanSigma\tvarSigma");
+		stream.println();
+	}
 
 	public void printTrackAntigenHeader(PrintStream stream) {
 		stream.print("day\tdiversity\ttmrca\tnetau\tserialInterval\tantigenicDiversity\tN\tS\tI\tR\tcases\tmeanLoad\tantigenicTypes\tcumulativeTypes");
@@ -419,7 +449,17 @@ public class Simulation {
 		stream.print("day\tantigentype\tfrequency\tinfected");
 		stream.println();
 	}
+	
+	public void printTypeMutationsHeader(PrintStream stream) {
+		stream.print("day\tantigentype\tnumMutations\tvarMutations");
+		stream.println();
+	}
 
+	public void printTypeImmunitiesHeader(PrintStream stream) {
+		stream.print("day\tantigentype\timmunity");
+		stream.println();;
+	}
+	
 	public void printAntigenicDistances(ArrayList<Integer> types) {
 		AntigenicTree.printDistanceMatrix(types, time);
 	}
@@ -518,10 +558,33 @@ public class Simulation {
 		varSigmaDist = fitDist.varSigma;
 		covBetaSigmaDist = fitDist.covBetaSigma;
 
-
 	}
 
-	// TODO - FIX 
+	// LC 
+	
+	public void updateFitnessDistsTypes(PrintStream stream) {
+		HostPopulation hp = demes.get(0);
+		ArrayList<Integer> typeList = hp.getAntigenicTypes();
+		ArrayList<ArrayList<Integer>> mutationLoadDistributions = hp.getVarMutationType(typeList);
+		//ArrayList<ArrayList<Double>> sigmaLoadDistributions = hp.getDistTypeImmunities(typeList);
+		ArrayList<Double> meanImmunities = hp.getMeanTypeImmunities(typeList);
+		ArrayList<Double> varImmunities = hp.getVarTypeImmunities(typeList);
+		
+		for (int t = 0; t < typeList.size(); t ++) {
+		
+			ArrayList<Integer> mutationList = mutationLoadDistributions.get(t);
+			double meanSigma = meanImmunities.get(t);
+			double varSigma = varImmunities.get(t);
+			//ArrayList<Double> sigmaList = sigmaLoadDistributions.get(t);
+			int type = typeList.get(t);
+			
+		VirusFitnessDistType  fitnessDistsTypes = hp.getViralFitnessDistrubtionTypes(meanSigma, varSigma, mutationList, type);
+		printViralFitnessDistTypes(stream, fitnessDistsTypes);
+		
+		}
+	}
+	
+	
 	public ArrayList<Double> updateFrequencies() {
 		HostPopulation hp = demes.get(0);
 		ArrayList<Integer> typeList = hp.getAntigenicTypes();
@@ -535,6 +598,30 @@ public class Simulation {
 		}
 		return typeFrequencies;
 	}
+	// LC 
+	public ArrayList<Double> updateMeanTypeImmunities() {
+		HostPopulation hp = demes.get(0);
+		ArrayList<Integer> typeList = hp.getAntigenicTypes();
+		ArrayList<Double> meanTypeImmunities = hp.getMeanTypeImmunities(typeList);
+		return(meanTypeImmunities);
+	}
+	
+	// LC 
+	public ArrayList<Double> updateMutationLoads() {
+		HostPopulation hp = demes.get(0);
+		ArrayList<Integer> typeList = hp.getAntigenicTypes();
+		ArrayList<Double> typeMutationLoad = hp.getMutationTypeCounts(typeList);
+		return typeMutationLoad;
+	}
+	
+	// LC 
+//	public ArrayList<Double> updateVarMutationTypes() {
+//		HostPopulation hp = demes.get(0);
+//		ArrayList<Integer> typeList = hp.getAntigenicTypes();
+//		ArrayList<Double> varMutationLoadTypes = hp.getVarMutationType(typeList);
+//		return(varMutationLoadTypes);
+				
+//	}
 
 	public void pushLists() {
 		diversityList.add(diversity);
@@ -548,6 +635,8 @@ public class Simulation {
 		rList.add((double) getR());
 		casesList.add((double) getCases());		
 	}
+	
+	// LC 
 
 	public void resetCases() {
 		for (int i = 0; i < Parameters.demeCount; i++) {	
@@ -633,43 +722,79 @@ public class Simulation {
 			PrintStream trackFrequenciesStream = new PrintStream(trackFrequenciesFile);
 			printTrackFrequenciesHeader(trackFrequenciesStream);
 
+/*			String typeMutationsName = time.concat("/out.typeMutations.txt");
+			File trackTypeMutationsFile = new File(typeMutationsName);
+			trackTypeMutationsFile.delete();
+			trackTypeMutationsFile.createNewFile();
+			PrintStream typeMutationsStream = new PrintStream(trackTypeMutationsFile);
+			printTypeMutationsHeader(typeMutationsStream);
+	*/		
+			
+			String typeViralFitness = time.concat("/out.typeViralFitness.txt");
+			File trackViralFitnessFile = new File(typeViralFitness);
+			trackViralFitnessFile.delete();
+			trackViralFitnessFile.createNewFile();
+			PrintStream typeViralFitnessStream = new PrintStream(trackViralFitnessFile);
+			printFitnessTypeHeader(typeViralFitnessStream);
+			
 			for (int i = 0; i < Parameters.endDay; i++) {
 
 				stepForward();
 
 
-				if(Parameters.novelAntigen) {
+				if(Parameters.novelAntigen == true && Parameters.day > Parameters.burnin) {
 					//System.out.println("Novel antigen-time to update");
 					updateDiversity(); // make sure this isn't pushing anything 
 					updateFitnessDists(); // make sure this isn't pushing anything 
 					printTrackAntigens(trackAntigenStream);
+				
 					ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
 					ArrayList<Integer> typeList = getAntigenicTypes();
+					
 					printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
 					printFitness(fitnessStream);
-					Parameters.novelAntigen = false;
+					
+					updateFitnessDistsTypes(typeViralFitnessStream);
+		/*			ArrayList<Double> currentMutationLoads = updateMutationLoads(); // New method to update average mutation load of each antigen
+					ArrayList<Double> currentVarMutationLoads = updateVarMutationTypes();
+					printTypeMutations(typeMutationsStream, currentMutationLoads, currentVarMutationLoads, typeList);				
+					ArrayList<Double> currentTypeImmunities = updateMeanTypeImmunities();  // New method to update mean type immunities
+					printTypeImmunities(typeImmunitiesStream, currentTypeImmunities, typeList);
+	
 				}
 				/* Here I want to be able to UpdateDiversity, UpdateFitnessDists
 				 * Print out printTrackAntigens(trackAntigenStream) I think this is taken care of 
 				 */
-
-				if (Parameters.day % Parameters.printStep == 0) {
+				}
+				
+				if (Parameters.day % Parameters.printStep == 0 ) {
 					daysList.add(Parameters.getDate());
 					updateDiversity();
-					updateFitnessDists(); // new for tracking viral fitness distributions
 					//printState();
 					if (Parameters.day > Parameters.burnin) {
 						printState(seriesStream);
-						printMutations(mutationStream);
-						printFitness(fitnessStream);
-						ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
-						ArrayList<Integer> typeList = getAntigenicTypes();
-						printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
-
-						pushLists();
+						printMutations(mutationStream);	
+						printTrackAntigens(trackAntigenStream);
+						if(Parameters.novelAntigen == false) {
+							updateFitnessDists(); // new for tracking viral fitness distributions
+							printFitness(fitnessStream);
+							ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
+							ArrayList<Integer> typeList = getAntigenicTypes();
+							printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
+							updateFitnessDistsTypes(typeViralFitnessStream);
+						}
+		/*				ArrayList<Double> currentMutationLoads = updateMutationLoads(); // New method to print out average mutation load of each antigen
+						ArrayList<Double> currentVarMutationLoads = updateVarMutationTypes();
+						printTypeMutations(typeMutationsStream, currentMutationLoads, currentVarMutationLoads, typeList);
+						ArrayList<Double> currentTypeImmunities = updateMeanTypeImmunities();  // New method to update mean type immunities
+						printTypeImmunities(typeImmunitiesStream, currentTypeImmunities, typeList);
+		*/					pushLists();
 					}
 					//resetCases(); change so it's annual attack 
 				}
+				
+				Parameters.novelAntigen = false;
+				
 				if (Parameters.day % 365 == 0 ) {
 					resetCases();
 				}
@@ -706,7 +831,7 @@ public class Simulation {
 		printSummary(time);
 
 		// tree reduction
-		VirusTree.pruneTips();
+		/*VirusTree.pruneTips();
 		VirusTree.markTips();		
 
 		// tree prep
@@ -737,7 +862,7 @@ public class Simulation {
 		//VirusTree.printSimMapClades();
 		VirusTree.printSimMapAntigenic(time);                               // Print SimMap tree with annotation for antigenic type along lineages
 		VirusTree.printTrunkAntigenicShifts(time);                          // Print size of all antigenic transitions along trunk
-
+*/
 
 		// Trevor's stuff:
 

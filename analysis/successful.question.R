@@ -12,7 +12,7 @@ library(broom)
 
 
 ##### Given a specific criteria for success, calculate the percentage of infections it accounts for the first year, second year, etc. 
-tropics.folder = "../data/tropics/tropics_20yr/"
+tropics.folder = "../data/tropics/tropics_20yr"
 
 source('analysis_functions.R')
 source('plotting_functions.R')

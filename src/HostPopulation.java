@@ -254,6 +254,8 @@ public class HostPopulation {
             ArrayList<Integer> typeList = getAntigenicTypes(); // returns list of all unique antigenic types
             ArrayList<Double> typeImmunities = getMeanTypeImmunities(typeList); //store average immunity in host population for each type 
             
+            // NEED TO PRINT OUT THIS 
+            
             // Get beta, sigma and R distributions in viral population
             ArrayList<Double> betas = new ArrayList<Double>();
             ArrayList<Double> sigmas = new ArrayList<Double>();
@@ -272,7 +274,7 @@ public class HostPopulation {
             double sumSigmas = 0;
             double sumRs = 0;
             
-            boolean logValues = true;
+            boolean logValues = false;
             
             for (int i = 0; i < infections; i++) {
             	
@@ -564,6 +566,115 @@ public class HostPopulation {
                 
         }
         
+        public ArrayList<Double> getVarTypeImmunities(ArrayList<Integer> typeList) {
+            
+	 		ArrayList<ArrayList<Double>> typeIndividualSigmas = new ArrayList<ArrayList<Double>>();
+            ArrayList<Double> typeImmunities = new ArrayList<Double>(); //store average immunity in host population for each type    
+            ArrayList<Double> varImmunities = new ArrayList<Double>();
+           
+            for(int t = 0; t < typeList.size(); t++) {
+            	typeIndividualSigmas.add(new ArrayList<Double>());
+            }
+            for (int t = 0; t < typeList.size(); t++) {
+                
+                int type = typeList.get(t);
+                double meanTypeImmunity = 0;
+                if (Parameters.hostImmuneHistorySampleCount >= getN()) {
+                    
+                    // If the number of host immune histories to sample is greater than the host pop size, loop through each host rather than sampling randomly
+                    List<Host> allHosts = new ArrayList<Host>(); //includes S, I, and R hosts
+                    //allHosts.addAll(susceptibles); allHosts.addAll(getInfecteds()); allHosts.addAll(recovereds); Modified 
+                    allHosts.addAll(susceptibles); allHosts.addAll(infecteds); allHosts.addAll(recovereds);// ORIGINAL
+                    double sumTypeImmunity = 0;
+                    for (int s = 0; s < allHosts.size(); s++) {
+                        Host sH = allHosts.get(s);
+                        Phenotype[] history = sH.getHistory();
+                        final double sigma = AntigenicTree.getClosestDistance(type, history); // Find closest phenotype in history in terms of logKb
+                        typeIndividualSigmas.get(typeList.indexOf(type)).add(sigma);
+                        sumTypeImmunity += sigma;  
+                    }
+                   meanTypeImmunity = sumTypeImmunity / Parameters.hostImmuneHistorySampleCount;
+                    // calculate variance
+                  double sumSqrDevsImmunities = 0.0;
+                  ArrayList<Double> individualSigmas = typeIndividualSigmas.get(typeList.indexOf(type));
+                  for(int i = 0; i < individualSigmas.size(); i++) {
+            			double sqrImmunity = Math.pow(individualSigmas.get(i)-meanTypeImmunity,2);
+            			sumSqrDevsImmunities += sqrImmunity;
+            		}
+                  
+            	double varImmunity = sumSqrDevsImmunities/individualSigmas.size();
+            	varImmunities.add(varImmunity);
+                    
+                } else {
+                    
+                    // Sample (n = Parameters.hostImmmuneHistorySampleCount) host immune histories:
+                    double sumTypeImmunity = 0;
+                    for (int s = 0; s < Parameters.hostImmuneHistorySampleCount; s++) {
+                        Host sH = getRandomHost();
+                        Phenotype[] history = sH.getHistory();
+                        final double sigma = AntigenicTree.getClosestDistance(type, history); // Find closest phenotype in history in terms of sigma
+                        typeIndividualSigmas.get(typeList.indexOf(type)).add(sigma);
+                        sumTypeImmunity += sigma; 
+                    }
+                    meanTypeImmunity = sumTypeImmunity / Parameters.hostImmuneHistorySampleCount;
+                    // calculate variance
+                    double sumSqrDevsImmunities = 0.0;
+                    ArrayList<Double> individualSigmas = typeIndividualSigmas.get(typeList.indexOf(type));
+                    for(int i = 0; i < individualSigmas.size(); i++) {
+              			double sqrImmunity = Math.pow(individualSigmas.get(i)-meanTypeImmunity,2);
+              			sumSqrDevsImmunities += sqrImmunity;
+              		}
+                    
+              	double varImmunity = sumSqrDevsImmunities/individualSigmas.size();
+              	varImmunities.add(varImmunity);                    
+                }
+           }
+            return varImmunities ;
+                
+        }
+        
+         
+        public ArrayList<ArrayList<Double>> getDistTypeImmunities(ArrayList<Integer> typeList) {
+            
+            ArrayList<ArrayList<Double>> typeIndividualSigmas = new ArrayList<ArrayList<Double>>(); // creates an array of ho
+            
+            // Initiated length
+            for(int t = 0; t < typeList.size(); t ++) {
+            		 typeIndividualSigmas.add(new ArrayList<Double>());
+            	}
+           
+            for (int t = 0; t < typeList.size(); t++) {
+                
+                int type = typeList.get(t);
+                if (Parameters.hostImmuneHistorySampleCount >= getN()) {
+                    
+                    // If the number of host immune histories to sample is greater than the host pop size, loop through each host rather than sampling randomly
+                    List<Host> allHosts = new ArrayList<Host>(); //includes S, I, and R hosts
+                    //allHosts.addAll(susceptibles); allHosts.addAll(getInfecteds()); allHosts.addAll(recovereds); Modified 
+                    allHosts.addAll(susceptibles); allHosts.addAll(infecteds); allHosts.addAll(recovereds);// ORIGINAL
+                    for (int s = 0; s < allHosts.size(); s++) {
+                        Host sH = allHosts.get(s);
+                        Phenotype[] history = sH.getHistory();
+                        final double sigma = AntigenicTree.getClosestDistance(type, history); // Find closest phenotype in history in terms of logKb
+                        typeIndividualSigmas.get(typeList.indexOf(type)).add(sigma);
+                    }
+                    
+                } else {
+                    
+                    // Sample (n = Parameters.hostImmmuneHistorySampleCount) host immune histories:
+  
+                    for (int s = 0; s < Parameters.hostImmuneHistorySampleCount; s++) {
+                        Host sH = getRandomHost();
+                        Phenotype[] history = sH.getHistory();
+                        final double sigma = AntigenicTree.getClosestDistance(type, history); // Find closest phenotype in history in terms of sigma
+                        typeIndividualSigmas.get(typeList.indexOf(type)).add(sigma);                        
+                    }
+                }      
+            }
+            return typeIndividualSigmas;
+        }
+        
+        
         // Not using this since absorbed into getViralFitnessDist
 /*        public double getAntigenicLoadDistribution() {
             
@@ -649,6 +760,132 @@ public class HostPopulation {
             return types; // return size 
         }
         
+        
+        
+        public VirusFitnessDistType getViralFitnessDistrubtionTypes(double meanSigma, double varSigma, ArrayList<Integer> typeMutationSamples, int type) {
+        	
+        	VirusFitnessDistType fitDistType = new VirusFitnessDistType();
+        	fitDistType.antigenicType = type;
+        	// Going to receive level of immunity 
+        	// Going to receive sample of mutations 
+        	
+        	// Get Immunity and Mutation List for Each Type
+        	double currS = getS();
+        	double currN = getN();
+        	double currSOverN = currS/currN;
+       
+        	final double constantRTerm = 1/(Parameters.birthRate + Parameters.nu);
+
+            double sumBetas = 0;
+            double sumSigmas = 0;
+            double sumRs = 0;
+            double sumMutLs = 0;
+
+        	
+        	// Get beta, sigma and R distributions in viral population
+            ArrayList<Double> betas = new ArrayList<Double>();
+            ArrayList<Double> sigmas = new ArrayList<Double>();
+            ArrayList<Double> Rs = new ArrayList<Double>();
+
+            
+            boolean logValues = true;
+
+            int typeSize = typeMutationSamples.size();
+            
+        	for(int i = 0; i < typeMutationSamples.size(); i++) {
+        	   	// for betas  
+        		int mutL = typeMutationSamples.get(i);
+        		double betaK = Parameters.beta * Math.pow((1-Parameters.mutCost), mutL );
+        		if(logValues){
+        			betaK = Math.log(betaK);
+        		}
+        		sumBetas += betaK;
+        		sumMutLs += mutL;
+        		
+        		betas.add(betaK);
+        		
+        		
+        		// for sigmas
+        	//	double sigma = typeSigmaSamples.get(i);
+        		double sigmaEffective = meanSigma*currSOverN;
+        		if(logValues) {
+        			sigmaEffective = Math.log(sigmaEffective);
+        		}
+        		//sumSigmas += sigma;
+        		//sigmas.add(sigmaEffective);
+        		
+        		// for R
+        		double viralR = 0.0;
+        		if (logValues){
+        			viralR = betaK + sigmaEffective + Math.log(constantRTerm);
+        		} else {
+                    viralR = betaK * sigmaEffective * constantRTerm;
+        		}
+        		sumRs += viralR;
+        		Rs.add(viralR);
+
+         	}
+        	
+        	// Compute mean and variance of mutations
+        	double meanMutations = sumMutLs/typeSize;
+        	double sumSqrDevsMutations = 0.0;
+        	for(int i = 0;i<typeSize;i++) {
+        		double sqrDev = Math.pow((typeMutationSamples.get(i)-meanMutations), 2);
+        		sumSqrDevsMutations += sqrDev;
+        	}
+        	double varMutations = sumSqrDevsMutations/typeSize;
+        	fitDistType.meanMut = meanMutations;
+        	fitDistType.varMut = varMutations;
+        	
+        	//Compute mean and variance of betas;
+        	double meanBeta = sumBetas / typeSize;
+            double sumSqrDevsBeta = 0.0;
+            for (int i = 0; i < typeSize; i++) {
+                final double sqrDev = Math.pow((betas.get(i) - meanBeta),2);
+                sumSqrDevsBeta += sqrDev;
+            }
+            final double varBeta = sumSqrDevsBeta / typeSize;
+            fitDistType.meanBeta = meanBeta;
+            fitDistType.varBeta = varBeta;
+        	
+            
+         // Compute mean and variance of sigmas
+           // double meanSigma = sumSigmas / typeSize;
+            //double sumSqrDevsSigmas = 0.0;
+            //for (int i = 0; i < typeSize; i++) {
+            //    final double sqrDev = Math.pow((sigmas.get(i) - meanSigma),2);
+            //    sumSqrDevsSigmas += sqrDev;
+           // }
+            //final double varSigma = sumSqrDevsSigmas / typeSize;
+            fitDistType.meanSigma = meanSigma;
+            fitDistType.varSigma = varSigma;
+            
+            // Compute mean and variance of Rs
+            double meanR = sumRs / typeSize;
+            double sumSqrDevsR = 0.0;
+            for (int i = 0; i < typeSize; i++) {
+                final double sqrDev = Math.pow((Rs.get(i) - meanR),2);
+                sumSqrDevsR += sqrDev;
+            }
+            final double varR = sumSqrDevsR / typeSize;
+            fitDistType.meanR = meanR;
+            fitDistType.varR = varR;
+            
+            // Compute covariance of beta and sigma
+          //  double sumProdDevs = 0.0;
+           // for (int i = 0; i < typeSize; i++) {
+            //    final double prodDev = (betas.get(i) - meanBeta) * (sigmas.get(i) - meanSigma);
+            //    sumProdDevs += prodDev;
+           // }
+            final double covBetaSigma = 0; //sumProdDevs / typeSize;
+            fitDistType.covBetaSigma = covBetaSigma;
+
+            
+        	
+			return fitDistType;
+		}
+			
+        
         public ArrayList<Integer> getAntigenicTypes() {
             ArrayList<Integer> typeList = new ArrayList<Integer>();
             if (getI() > 0) {
@@ -692,6 +929,91 @@ public class HostPopulation {
            return typeFrequencies;
            // return typeCounts;
         }
+        
+        
+        
+        
+        
+        public ArrayList<Double> getMutationTypeCounts(ArrayList<Integer> typeList){
+        	ArrayList<Integer> typeCounts = new ArrayList<Integer>();
+        	ArrayList<Double> typeSumMutations = new ArrayList<Double>();
+        
+        	for(int t = 0; t < typeList.size(); t ++) {
+        		 typeCounts.add(0);
+        		 typeSumMutations.add((double) 0);
+        	}
+        	 
+         	if(getI()>0) {
+        		for(int i = 0; i< getI(); i++) {
+        			Host h = getInfecteds().get(i);
+        			Virus v = h.getInfection();
+        			Phenotype p = v.getPhenotype();
+        			int type = p.antigenicType();
+        			int mut = p.mutLoad();
+        			int typeIndex = typeList.indexOf(type);
+        			typeCounts.set(typeIndex, typeCounts.get(typeIndex)+1);
+        			typeSumMutations.set(typeIndex, typeSumMutations.get(typeIndex)+mut);
+        			
+        		}
+        	}
+        	// return mean and variance
+        	ArrayList<Double> typeMutations = new ArrayList<Double>();
+        
+        	
+        	for(int t = 0; t < typeList.size(); t++) {
+        		typeMutations.add(typeSumMutations.get(t)/typeCounts.get(t));
+        		
+        	}
+        	
+        	
+        	return(typeMutations);
+        }
+        
+        //// Get the variance in mutation distribution for each type 
+        public ArrayList< ArrayList<Integer>> getVarMutationType(ArrayList<Integer> typeList){
+        	ArrayList<ArrayList<Integer>> typeIndividualMutations = new ArrayList<ArrayList<Integer>>(); // creates an array of hosts (it says new...was this here before in the population)
+            
+        	
+        	for(int t = 0; t < typeList.size(); t ++) {
+            //   typeCounts.add(0);
+        	//	 typeSumMutations.add((double) 0);
+        		 typeIndividualMutations.add(new ArrayList<Integer>());
+        	}
+        	
+        	if(getI()>0) {
+        		for(int i = 0; i< getI(); i++) {
+        			Host h = getInfecteds().get(i);
+        			Virus v = h.getInfection();
+        			Phenotype p = v.getPhenotype();
+        			int type = p.antigenicType();
+        			int mut = p.mutLoad();
+        		//	int typeIndex = typeList.indexOf(type);
+        		//	typeCounts.set(typeIndex, typeCounts.get(typeIndex)+1);
+        		//	typeSumMutations.set(typeIndex, typeSumMutations.get(typeIndex)+mut);
+        			typeIndividualMutations.get(typeList.indexOf(type)).add(mut); // have kept track of individual mutations 
+        			
+        		}
+        	}
+        	// return mean and variance
+        
+        //	ArrayList<Double> typeVarMutations = new ArrayList<Double>();
+         	
+        //	for(int t = 0; t < typeList.size(); t++) {
+        		//typeMutations.add(typeSumMutations.get(t)/typeCounts.get(t));
+        //		double mutAvg = typeSumMutations.get(t)/typeCounts.get(t);
+        	//	ArrayList<Integer> mutationsOfType = typeIndividualMutations.get(t);
+        		//double sumSqrDevsMutations = 0.0;
+        		//for(int i = 0; i < mutationsOfType.size(); i++) {
+        			//final double sqrMutation = Math.pow(mutationsOfType.get(i)-mutAvg,2);
+        			//sumSqrDevsMutations += sqrMutation;
+        	//	}
+        	//	double varMutation = sumSqrDevsMutations/mutationsOfType.size();
+        	//	typeVarMutations.add(varMutation);
+        //	}
+        	return(typeIndividualMutations);
+        }
+        
+        
 
         
         public ArrayList<Integer> getLoadDistribution() {
@@ -1633,5 +1955,6 @@ public class HostPopulation {
 		public void setInfecteds(List<Host> infecteds) {
 			this.infecteds = infecteds;
 		}
-				
+
+			
 }

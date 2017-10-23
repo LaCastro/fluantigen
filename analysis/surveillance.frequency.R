@@ -43,16 +43,15 @@ find_data_at_freq <- function(sim.dir, trial.meta.data, surveillance.freq, type)
         dplyr::select(1:11)
     })
     
-    left_join(
-      fit.summary, timeseries.summary, by = c("postAntigen", "first.day"))  -> full.freq.summary
+    left_join(fit.summary, timeseries.summary, by = c("postAntigen", "first.day"))  -> full.freq.summary
     full.freq.summary$first.day = as.character(full.freq.summary$first.day)
     
     ## find dominant type 
-    dominant.types <- find_dominant_types_at_emerge(antigen.frequencies)
-    dominant.types %>%
-      filter(day %in% full.freq.summary$first.day) -> dominant.types
-    colnames(dominant.types)[2] = "dominant.type"; colnames(dominant.types)[3] = "dominant.freq"
-    dominant.types$day = as.character(dominant.types$day)
+    dominant.types = find_dominant_types_at_emerge(antigen.frequencies) %>%
+      filter(day %in% full.freq.summary$first.day) %>%
+      rename(dominant.type = antigentype,  dominant.freq = frequency) %>%
+      ungroup() %>%
+      mutate_at(.vars = "day", as.character)
     
     full.freq.summary %>%
       left_join(dominant.types, by = c("first.day" = "day")) -> full.freq.summary
@@ -71,14 +70,15 @@ find_data_at_freq <- function(sim.dir, trial.meta.data, surveillance.freq, type)
     track.antigen.summary$first.day = as.character(track.antigen.summary$first.day)
     
     full.freq.summary %>%
-      left_join(track.antigen.summary, by = c("first.day", "postAntigen")) -> full.freq.summary
+      left_join(track.antigen.summary, by = c("first.day", "postAntigen")) %>%
+      rename(-> full.freq.summary
     
     colnames(full.freq.summary)[2] = "day"
     return(full.freq.summary)
   }
 }
 find_data_at_freq_all <- function(dir, correct.trials, meta.data, surveillance.freq, type) {
-  
+  browser()
   meta.data %>%
     dplyr::select(-cases, -simDay, -dominant.type) %>%
     filter(final.max > surveillance.freq) %>%  
@@ -123,10 +123,9 @@ data_at_freq <- function(dir, correct.trials, surveillance.freq, meta.data, summ
 }
 
 ############################################################################################################
+data.folder = "../data/tropics/tropics_20yr"
 
-data.folder = "../data/tropics/tropics_20yr/"
 antigen.data = create_meta_data_all(dir = data.folder)
-
 timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
 
 ### For north, going to calculate the timeseries relative to what it's like below 10 years
@@ -135,6 +134,8 @@ antigen.data = normalize_infection(meta.data = antigen.data, infected.range)
 
 thres = .2
 antigen.frequencies = read_outputfiles(data.folder, "/out.antigenFrequencies.txt")
+
+## this could eventually be re-done so the calculate_days_above is happening when generating the data set 
 days.above.thres = calculate_days_above_thres(antigen.frequencies, threshold = thres)
 antigen.data %>% left_join(days.above.thres, by = c("postAntigen" = "antigentype", ".id" = ".id")) -> antigen.data
 
@@ -142,15 +143,7 @@ already_lost = which(is.na(antigen.data$days.above))
 antigen.data$days.above[already_lost] = 0
 
 antigen.data %>%
-  mutate(success = ifelse(days.above > 45, "yes", "no")) -> antigen.data
-
-antigen.data %>%
-  filter(success == "yes") -> antigen.success
-
-antigen.data %>%
-  filter(success == "no") %>%
-  mutate(success = ifelse(final.max > .01, "transient", "no")) -> antigen.eliminated
-
+  mutate(success = ifelse(days.above > 45, "Est.", ifelse(final.max > .1, "Transient", "no"))) -> antigen.data
 
 antigen.data %>%
   group_by(.id) %>%
@@ -159,9 +152,6 @@ antigen.data %>%
 
 ## have to make data tidy before this 
 correct.trials = unique(antigen.data$.id)
-correct.trials = c("tropics_100", "tropics_20")
-
-
 
 freq.02 = data_at_freq(dir=data.folder, meta.data = antigen.data, correct.trials = correct.trials,
                          surveillance.freq = .02, summary.infection=infection.summary)

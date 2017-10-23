@@ -1,0 +1,11 @@
+## Should be run at the beginning of each analysis-the libraries that are being used
+
+library(plyr)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(scales)
+library(reshape2)
+library(data.table)
+library(RColorBrewer)
+library(broom)
