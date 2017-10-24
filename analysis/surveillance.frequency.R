@@ -106,6 +106,7 @@ find_data_at_freq_all <- function(dir, correct.trials, meta.data, surveillance.f
   freq.data.all = rbindlist(freq.data, fill = TRUE)
   return(freq.data.all)
 }
+
 data_at_freq <- function(dir, correct.trials, surveillance.freq, meta.data, summary.infection) {
   
   freq.no = find_data_at_freq_all(dir = dir, correct.trials = correct.trials,
