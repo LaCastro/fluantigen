@@ -569,7 +569,7 @@ public class HostPopulation {
         public ArrayList<Double> getVarTypeImmunities(ArrayList<Integer> typeList) {
             
 	 		ArrayList<ArrayList<Double>> typeIndividualSigmas = new ArrayList<ArrayList<Double>>();
-            ArrayList<Double> typeImmunities = new ArrayList<Double>(); //store average immunity in host population for each type    
+           // ArrayList<Double> typeImmunities = new ArrayList<Double>(); //store average immunity in host population for each type    
             ArrayList<Double> varImmunities = new ArrayList<Double>();
            
             for(int t = 0; t < typeList.size(); t++) {

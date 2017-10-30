@@ -16,10 +16,10 @@ if(grepl('lacastro', Sys.info()['login'])) {
 N = seq(from = 1, to = 100, by = 1)
 type.sim = "tropics"
 
-sink('../launcher/run_trials.txt') # creates a text file in the launcher
+sink('../launcher/run_trials1027.txt') # creates a text file in the launcher
 
 for(n in N) {
-    startCmd <- "java -jar trackAntigen.jar"
+    startCmd <- "java -jar trackAntigen1027.jar"
     dirName <- paste0(" ", type.sim, "_" , n)
     parmFile <- " parameters_tropics.yml"
     outputDir <- " simdata"

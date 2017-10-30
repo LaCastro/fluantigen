@@ -578,7 +578,7 @@ public class Simulation {
 			//ArrayList<Double> sigmaList = sigmaLoadDistributions.get(t);
 			int type = typeList.get(t);
 			
-		VirusFitnessDistType  fitnessDistsTypes = hp.getViralFitnessDistrubtionTypes(meanSigma, varSigma, mutationList, type);
+		VirusFitnessDistType fitnessDistsTypes = hp.getViralFitnessDistrubtionTypes(meanSigma, varSigma, mutationList, type);
 		printViralFitnessDistTypes(stream, fitnessDistsTypes);
 		
 		}
@@ -742,10 +742,10 @@ public class Simulation {
 				stepForward();
 
 
-				if(Parameters.novelAntigen == true && Parameters.day > Parameters.burnin) {
+				/*if(Parameters.novelAntigen == true && Parameters.day > Parameters.burnin) {
 					//System.out.println("Novel antigen-time to update");
-					updateDiversity(); // make sure this isn't pushing anything 
-					updateFitnessDists(); // make sure this isn't pushing anything 
+					//updateDiversity(); // make sure this isn't pushing anything 
+					//updateFitnessDists(); // make sure this isn't pushing anything 
 					printTrackAntigens(trackAntigenStream);
 				
 					ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
@@ -764,9 +764,9 @@ public class Simulation {
 				}
 				/* Here I want to be able to UpdateDiversity, UpdateFitnessDists
 				 * Print out printTrackAntigens(trackAntigenStream) I think this is taken care of 
-				 */
+				 
 				}
-				
+				*/
 				if (Parameters.day % Parameters.printStep == 0 ) {
 					daysList.add(Parameters.getDate());
 					updateDiversity();
@@ -775,22 +775,24 @@ public class Simulation {
 						printState(seriesStream);
 						printMutations(mutationStream);	
 						printTrackAntigens(trackAntigenStream);
-						if(Parameters.novelAntigen == false) {
-							updateFitnessDists(); // new for tracking viral fitness distributions
-							printFitness(fitnessStream);
-							ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
-							ArrayList<Integer> typeList = getAntigenicTypes();
-							printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
-							updateFitnessDistsTypes(typeViralFitnessStream);
-						}
-		/*				ArrayList<Double> currentMutationLoads = updateMutationLoads(); // New method to print out average mutation load of each antigen
+						//	if(Parameters.novelAntigen == false) {
+						updateFitnessDists(); // new for tracking viral fitness distributions
+						printFitness(fitnessStream);
+						ArrayList<Double> currentFrequencies = updateFrequencies(); // New method to update frequencies of each antigen
+						ArrayList<Integer> typeList = getAntigenicTypes();
+						printFrequencies(trackFrequenciesStream, currentFrequencies, typeList);
+						updateFitnessDistsTypes(typeViralFitnessStream);
+						//}
+						/*				ArrayList<Double> currentMutationLoads = updateMutationLoads(); // New method to print out average mutation load of each antigen
 						ArrayList<Double> currentVarMutationLoads = updateVarMutationTypes();
 						printTypeMutations(typeMutationsStream, currentMutationLoads, currentVarMutationLoads, typeList);
 						ArrayList<Double> currentTypeImmunities = updateMeanTypeImmunities();  // New method to update mean type immunities
 						printTypeImmunities(typeImmunitiesStream, currentTypeImmunities, typeList);
-		*/					pushLists();
+						 */					
+						
 					}
 					//resetCases(); change so it's annual attack 
+					pushLists();
 				}
 				
 				Parameters.novelAntigen = false;
