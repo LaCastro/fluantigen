@@ -105,6 +105,65 @@ gather_data_freq <- function(trial, surveillance.freq) {
   }
   return(surv.data)
 }
+gather_data_freq2 <- function(trial, surveillance.freq) {
+  trial.name = trial$name[1]
+  surv.data = trial %>% select(antigentype, success, name)
+  
+  # read in and extract information from antigen.frequencies for figuring out the first day 
+  antigen.frequencies[[eval(trial.name)]] %>%
+    filter(antigentype %in% trial$antigentype) %>%
+    group_by(antigentype) %>%
+    filter(frequency > surveillance.freq) %>% 
+    summarize(first.day = min(day)) %>%
+    mutate_at("antigentype", as.character) %>%
+    right_join(surv.data, by = c("antigentype" = "antigentype")) -> surv.data
+  # read in and extract from the viral fitness
+  
+  fitness <- read.table(paste0(tropics.folder, trial.name, "/out.viralFitnessSeries.txt"), header = TRUE)
+  fitness %>%
+    filter(day %in% surv.data$first.day) %>%
+    filter(!duplicated(day)) %>%
+    right_join(surv.data, by = c("day" = "first.day")) -> surv.data  ### at this point first.day becomes day 
+  
+  # read in and extract from the timeseries 
+  timeseries = read.table(paste0(tropics.folder, trial.name, "/out.timeseries.txt"), header = TRUE)
+  surv.data = adply(.data = surv.data, .margins = 1, function(surv) {
+    timeseries %>%
+      mutate(day.difference = abs(round(date*365)-surv$day)) %>%
+     # filter(date == (surv$day/365)) %>%
+      slice(which.min(day.difference)) %>%
+      select(diversity, tmrca, netau, serialInterval, antigenicDiversity, totalS, totalI, totalCases) %>%
+      bind_cols(surv) -> surv
+    return(surv)
+  })
+  
+  surv.data = find_dominant_types_at_emerge(antigen.frequencies[[eval(trial.name)]]) %>%
+    filter(day %in% surv.data$day) %>%
+    rename(dominant.type = antigentype,  dominant.freq = frequency) %>%
+    ungroup() %>%
+    right_join(surv.data, by = "day")
+  
+  track.antigen <- read.table(paste0(tropics.folder, trial.name, "/out.trackAntigenSeries.txt"), header = TRUE)
+  track.antigen %>%
+    filter(day %in% surv.data$day) %>%
+    select(-diversity, -tmrca, -netau, -serialInterval, -antigenicDiversity) %>%
+    right_join(surv.data, by = "day") -> surv.data
+  
+  
+  viralTypeFitness <- read.table(paste0(tropics.folder, trial.name, "/out.typeViralFitness.txt"), header = TRUE)
+  colnames(viralTypeFitness) = paste0("individual.", colnames(viralTypeFitness))
+  surv.data = adply(.data = surv.data, .margins = 1, function(viralType) {
+    viralTypeFitness %>%
+      filter(individual.antigenType == viralType$antigentype) %>%
+      filter(individual.day == viralType$day) %>%
+      select(-individual.day, -individual.simDay, -individual.antigenType) %>%
+      bind_cols(viralType) -> viralType
+    return(viralType)
+  })
+
+  return(surv.data)
+}
+
 calculate_days_above <- function(antigen.frequencies, threshold) { 
   antigen.frequencies %>%
     group_by(antigentype) %>%
@@ -175,8 +234,7 @@ clean_gathered_data = function(entry) {
 }
 
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
-tropics.folder = "../data/tropics/tropics_20yr/"
-tropics.folder = "../data/tropics_30/"
+tropics.folder = "../data/tropics_30/eligible/"
 trial.dirs = dir(tropics.folder)
 
 # This is a slow step
@@ -222,9 +280,14 @@ meta.data %>%
   bind_rows(missing.filled) -> meta.data
 
 ####### Step 5: Create Meta Data at different time points
-freq.two = ddply(.data = meta.data, .variables = "name", function(trial) gather_data_freq(trial, surveillance.freq = .02))
-freq.five = ddply(.data = meta.data, .variables = "name", function(trial) gather_data_freq(trial,surveillance.freq = .05))
+### This may become Step 4 
+
+freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
+freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
+freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
 
 
 ###Calculates the number of days an antigen type is present above a certain frequency
+
+
 

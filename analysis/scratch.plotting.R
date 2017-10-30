@@ -91,6 +91,93 @@ sjp.glmer(model.glm, type = "fe")
 sjp.glmer(GLMER, type = "eff", show.ci = TRUE)
 
 
-
-
 #########
+
+freq.explore = rbind(data.frame(freq = ".01", freq.one),
+                     data.frame(freq = ".02", freq.two),
+                     data.frame(freq = ".05", freq.five))
+
+
+freq.explore %>%
+  mutate(ratio.mutation = individual.meanMut/meanLoad,
+         ratio.meanR = individual.meanR/meanR,
+         ratio.varR = individual.varR/varR,
+         ratio.meanBeta = individual.meanBeta/meanBeta,
+         ratio.varBeta = individual.varBeta/varBeta,
+         ratio.meanSigma = individual.meanSigma/meanSigma,
+         ratio.varSigma = individual.varSigma/varSigma) -> freq.explore
+
+freq.explore %>%
+  filter(day != 1833) %>%
+  filter(freq == ".01") -> freq.first.check
+
+# calculating the ratios 
+individual = c("individual.meanMut", "individual.varMut", "individual.meanR", 
+               "individual.varR", "individual.meanBeta", "individual.varBeta", 
+               "individual.meanSigma","individual.varSigma")
+popAntigen = c("antigenicTypes", "dominant.freq", "diversity", "tmrca", "antigenicDiversity")
+viralFitness = c("meanLoad", "meanR", "varR", "meanBeta", "varBeta", "meanSigma","varSigma", "covBetaSigma")
+popDynamics = c("netau", "serialInterval", "totalI")
+ratios = c("ratio.mutation", 'ratio.meanR', 'ratio.varR', 'ratio.meanBeta', 'ratio.varBeta', 'ratio.meanSigma', 'ratio.varSigma')
+
+freq.explore %>%
+  gather(key = variable, value = value, -freq, - antigentype, -success, -name,-day) %>%
+  filter(variable %in% ratios) %>%
+  filter(day != 1833) %>%
+  ggplot(aes(x = freq, y = value, color = success)) +
+  facet_wrap(~variable, scales = "free") + 
+  geom_boxplot() +
+  scale_color_manual(values = c("orange", "purple")) + 
+  labs(x = "Frequency Point", color  = "Antigen Fate") -> ratios.plot
+
+
+
+save_plot(ratios.plot, filename = "exploratory.figs/ratios.pdf", base_height = 8, base_aspect_ratio = 1.5)
+
+freq.explore %>%
+  ggplot(aes(x = individual.varSigma , y = varSigma, color = success)) +
+  facet_wrap(~freq) + geom_point() + 
+  scale_color_manual(values  = c("orange", "purple")) + geom_smooth()
+
+freq.explore %>%
+  group_by(antigentype, name) %>%
+  filter(day != 1833) %>%
+  gather(key = variable, value = value, -freq, -antigentype,-success,-name) %>%
+  arrange(antigentype) %>%
+  group_by(name, antigentype, variable) %>%
+  summarise(first.growth = first_growth(value),
+            second.growth = second_growth(value),
+            success = success[1]) %>%
+  ungroup() %>%
+  mutate_at("name", as.factor) -> diff.df
+
+
+diff.df %>%
+  select(-second.growth) %>%
+  spread(key = variable, first.growth) -> diff.first.growth
+
+individual = c("individual.meanMut", "individual.varMut", "individual.meanR", 
+               "individual.varR", "individual.meanBeta", "individual.varBeta", 
+               "individual.meanSigma","individual.varSigma")
+popAntigen = c("antigenicTypes", "dominant.freq", "diversity", "tmrca", "antigenicDiversity")
+viralFitness = c("meanLoad", "meanR", "varR", "meanBeta", "varBeta", "meanSigma","varSigma", "covBetaSigma")
+popDynamics = c("netau", "serialInterval", "totalI")
+
+
+diff.df %>%
+  filter(variable %in% ratios) %>%
+  gather(phase, value, first.growth, second.growth) %>%
+  ggplot(aes(phase, value, color = success)) + geom_boxplot() + facet_wrap(~variable, scales = "free") + 
+  scale_color_manual(values = c("orange", "purple")) -> ratios.diff.plot
+
+save_plot(ratios.diff.plot, filename = "exploratory.figs/ratios.diff.plot.pdf",
+          base_height = 8, base_aspect_ratio = 1.8)
+
+
+
+
+diff.df %>%
+
+  
+first_growth = function(x) {x[2]-x[1]}
+second_growth = function(x){x[3]-x[2]}

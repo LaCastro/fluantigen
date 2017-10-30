@@ -1,37 +1,46 @@
 rm(list=ls())
-library(plyr)
-library(tidyverse)
-library(ggplot2)
-library(cowplot)
-library(scales)
-library(reshape2)
-library(data.table)
-library(RColorBrewer)
-library(broom)
-
-
-source('analysis_functions.R'); source('plotting_functions.R')
+source('analysis_functions.R'); source('plotting_functions.R'); source('loadLibraries.R')
 
 # Plotting Timeseries Analysis 
-data.folder = "../data/tropics/correct_trials/"
+data.folder = "../data/tropics_30/"
+eligible.folder = "../data/tropics_30/eligible/"
 fig.folder = "exploratory.figs/north_figures/"
+
+
+eligible.folder.list = dir(eligible.folder)
+which(eligible.folder.list %in% trials.eligible )
 
 timeseries = read_outputfiles(dir = data.folder, type = "/out.timeSeries.txt")
 trials = unique(timeseries$.id)
-breaks = seq(from = 1, to = length(unique(timeseries$.id)), length.out = 5)
+breaks = seq(from = 1, to = length(unique(timeseries$.id)), length.out = 4)
 
 trials1 = trials[1:25]
 trials2 = trials[26:50]
 trials3 = trials[51:75]
 trials4 = trials[76:100]
-trials5 = trials[101:125]
-trials6 = trials[126:151]
-trials7 = trials[152:175]
-trials8 = trials[176:200]
-  
+
   
 timeseries %>%
-  filter(.id %in% trials8) -> timeseries.sub
+  group_by(.id) %>%
+  summarize(max.infected = max(totalI)*.0025,
+            min.infected = min(totalI)) %>%
+  filter(max.infected < 300) %>%
+  filter(min.infected > 100) -> eligible.trials
+
+trials.eligible = unique(eligible.trials$.id)
+trials.eligible1 = trials.eligible[1:31]
+trials.eligible2 = trials.eligible[32:62]
+trials.eligible3 = trials.eligible[67:79]
+
+timeseries %>%
+  filter(.id %in% trials.eligible2) %>%
+  plot_timeseries_id() -> trials.2
+
+trials.eligible
+
+timeseries %>%
+  filter(!(.id %in% eligible.trials$.id)) %>%
+  plot_timeseries_id() -> timeseries.wrong
 
 twenty.TS.2.8 = plot_timeseries_id(timeseries.sub)
 save_plot(twenty.TS.2.8, filename = paste0(fig.folder, "twenty.TS.2.8.pdf"), base_height = 8, base_aspect_ratio = 1.8)

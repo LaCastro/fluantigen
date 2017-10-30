@@ -201,7 +201,7 @@ time.series.columns = c(".id", "metric", "selected.antigen", "time.point2", "dat
 mydivide <- function(x){x[1,]/x[2,]}
 
 
-l)
+
 colnames(time.Series.change.dataset1)
 colnames(trackAntigen.change.dataset1)
 colnames(viralFitness.change.dataset1)

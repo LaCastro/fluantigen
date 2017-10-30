@@ -8,58 +8,28 @@ library(cvTools)
 library(cowplot)
 
 #########################################################################################
-predictorNames = colnames(antigen.data)
-
-exclude.emerge = c("oriAntigen", "postAntigen", "cases", "cumulativeTypes", 
-                   "final.max", "dominant.type", "life.length", "max.I", "min.I",
-                   "days.above", "infected", "N", "R")
-
-data = antigen.data[, -which(predictorNames%in%exclude.emerge)]
-
-
-predictorNames = colnames(freq.02)
-excluded = c("postAntigen", "oriAntigen",  "day.1", "date", "totalN", "totalR",
-             "totalCases", "dominant.type", "totalI", "max.I", "min.I")
-data = freq.02[, -which(predictorNames%in%excluded)]
-
-
-data = growth.data.l
+predictorNames = colnames(freq.first.check)
+exclude.emerge = c("freq", "day", "cases", "dominant.type", "cumulativeTypes", "antigentype","N",
+                   "totalS", "totalI", "I", "totalCases", "simDay")
+                   
+data = freq.first.check[, -which(predictorNames%in%exclude.emerge)]
 
 data$success = as.factor(data$success)
-data$selected.antigen = as.factor(data$selected.antigen)
+data$name = as.factor(data$name)
 
 data <- within(data, {
   success <- factor(success, levels=c("Est.", "Transient"), labels = c(1,0))
-  .id <- factor(.id)
+  name <- as.factor(name)
   #day <- as.numeric(as.character(day))
-  selected.antigen <- as.factor(selected.antigen)
+#  selected.antigen <- as.factor(selected.antigen)
 #  mutLoad <- as.numeric(as.character(mutLoad))
 #  distance <- as.numeric(as.character(distance))
 #  simDay <- as.numeric(as.character(simDay))
 })
 
-#data %>%
-#  filter(day > (3*365) & day < 3650) -> dataBurn
-
-data %>%
-  filter(day > 365*3) -> dataBurn
-dataBurn = data
-#number.years.rep = 17
-
-##### When the simDay isn't in terms of the burn in day, don't need the -1 and -3 
-#dataBurn %>%
-#  mutate(time.of.year = (simDay)-floor((x = day/365))) %>%
-#  mutate(quarter = ifelse(time.of.year < .25, 1,
-#                          ifelse(time.of.year < .5, 2,
-#                                 ifelse(time.of.year < .75, 3,4)))) -> dataScaled
-
-#dataScaled$quarter = as.factor(dataScaled$quarter)
-
 # Take our any data that's before 3 years
-table(dataBurn$success)/nrow(dataBurn)
-dataScaled = dataBurn
-
-table(dataScaled$success)/nrow(dataScaled)
+table(data$success)/nrow(data)
+dataScaled = data
 
 dataScaled%>%
   group_by(.id)%>%
@@ -68,26 +38,13 @@ dataScaled%>%
 
 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-
-## Variables to remove -- netau and mean Load ratio 
-dataScaled$value = as.numeric(dataScaled$value)
-
-dataScaled %>%
-  spread(key = var.id, value = value) -> data.wide 
-factor.variables = which(sapply(data.wide, is.factor)==TRUE)
-data.wide[,-factor.variables] <- lapply(data.wide[,-factor.variables],scale)
+dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
+dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
 
 
-data.wide = data.wide[,-which(colnames(data.wide) %in% c("first_meanLoad_ratio", "second_meanLoad_ratio",
-                                                         "second_netau_diff", "second_netau_ratio",
-                                                         "first_netau_diff", "first_netau_ratio"))]
-
-
-#dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
-#dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
-
-trial.all <- glmer(success ~.-.id-selected.antigen  + (1|.id), data = data.wide, family = binomial,
+trial.all <- lme4::glmer(success ~.-name + (1|name), data = dataScaled, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+summary(trial.all)
 vif.results = data.frame(vif.mer(trial.all))
 
 vif.excluded = c("success",
