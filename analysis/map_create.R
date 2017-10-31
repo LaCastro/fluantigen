@@ -163,7 +163,6 @@ gather_data_freq2 <- function(trial, surveillance.freq) {
 
   return(surv.data)
 }
-
 calculate_days_above <- function(antigen.frequencies, threshold) { 
   antigen.frequencies %>%
     group_by(antigentype) %>%
@@ -234,7 +233,7 @@ clean_gathered_data = function(entry) {
 }
 
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
-tropics.folder = "../data/tropics_30/eligible/"
+tropics.folder = "../data/tropics/eligible/"
 trial.dirs = dir(tropics.folder)
 
 # This is a slow step
