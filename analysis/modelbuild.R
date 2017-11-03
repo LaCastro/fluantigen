@@ -9,37 +9,41 @@ library(cvTools)
 library(cowplot)
 
 #########################################################################################
-predictorNames = colnames(freq.first.check)
-exclude.emerge = c("freq", "day", "cases", "dominant.type", "cumulativeTypes", "antigentype","N",
-                   "totalS", "totalI", "I", "R", "totalCases", "simDay")
-                   
-data = freq.first.check[, -which(predictorNames%in%exclude.emerge)]
+freq.df.subset %>%
+  filter(freq == "freq.01") -> freq.1.subset
 
+predictorNames = colnames(freq.1.subset)
+
+data = freq.1.subset
 
 data <- within(data, {
-  success <- factor(success, levels=c("Est.", "Transient"), labels = c(1,0))
+  success <- factor(success ) #, levels=c("Est.", "Transient"))
   name <- as.factor(name)
+  freq <- as.factor(freq)
+  antigentype <- as.factor(antigentype)
 })
 
-# Take our any data that's before 3 years
-dataScaled = data
-excluded.variables = c("netau")
-dataScaled = dataScaled[,-which(colnames(dataScaled) %in% excluded.variables)]
+
+dataScaled = data %>% select(-freq, -antigentype, -simDay, -day)
+dataScaled$netau[is.infinite(dataScaled$netau)] <- NA
 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-#dataScaled$netau[!is.finite(dataScaled$netau)] <- NA
 dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
-str(dataScaled)
+
+
+########## Fit first model 
 trial.all <- glmer(success ~.-name + (1| name), data = dataScaled, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+
+
 vif.results = data.frame(vif.mer(trial.all))
 
-vif.excluded = c("individual.meanMut", "S", "meanBeta",
-                 "individual.varMut", "individual.meanSigma",
-                 "individual.meanBeta","meanLoad",
-                 "varSigma", "individual.meanR", "meanSigma",
-                 "varR", "individual.varR",
-                 "individual.varBeta", "meanR")
+vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
+                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
+                 "meanR", "ratio.meanR", "individual.varBeta", "meanLoad", "ratio.varBeta",
+                 "ratio.meanBeta","antigenicTypes", "totalI")
+
+
 
 dataPurged = dataScaled[,-which(colnames(dataScaled) %in% vif.excluded)]
 trial.purged <- lme4::glmer(success ~.-name + (1 | name), data = dataPurged, family = binomial,
@@ -55,12 +59,16 @@ folds = cvFolds(n = length(unique(dataPurged$name)), K = folds.length, type = "r
 
 glmerperf=rep(0, folds.length); glmperf=glmerperf;
 data.summary.mat = data.frame(matrix(nrow = folds.length, ncol  = 10))
-colnames(data.summary.mat) = colnames(data.summary)
+colnames(data.summary.mat) = c("sigma", "logLik", "AIC", "BIC", "deviance", "df.residual", "estimate", "std.error", "statistic", "p.value")
 
+dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
 dataPurged %>%
   ungroup() %>%
-  gather(key = variable, value = value, -success, -name) -> data.scaled.l
+  gather(key = variable, value = value, -success, -name, -netau) -> data.scaled.l
+
 data.scaled.l$value = as.numeric(as.character(data.scaled.l$value))
+
+full.variables = unique(data.scaled.l$variable)
 
 single.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
@@ -86,58 +94,31 @@ single.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = functio
   return.data = t(c(per = s.performance, s.data.summary))
   return(return.data)
 })
+variable.1 = single.model.results %>% arrange(AIC) %>% slice(1)
 
-single.model.results
-
-
-################################## Running cross validation on single model
- 
-set.seed(62417)
-folds.length = 5;
-folds = cvFolds(n = length(unique(dataPurged$trial)), K = folds.length, type = "random")
-
-glmerperf=rep(0, folds.length); glmperf=glmerperf;
-aic = rep(0,folds.length)
-
-
-
-for(n in 1:folds.length) { 
-  test.ids = folds$subsets[folds$which==n]
-  test.trials = unique(dataPurged$trial)[test.ids]
-  
-  testdata = dataPurged[which(dataPurged$trial %in% test.trials), ]
-  traindata = dataPurged[-which(dataPurged$trial %in% test.trials),]
-  
-  
-# model.emerge <- glm(success~distance+mutLoad + normalize.I + meanLoad+ meanLoad*mutLoad + mutLoad*normalize.I,
-#                           family = "binomial", data = traindata)
-  
-# model.two <- glm(success~normalize.I +covBetaSigma+serialInterval, 
-#                   family = "binomial", data = traindata)
-  
-#  model.five <- glm(success~netau+dominant.freq+normalize.I,
-#                   family = "binomial", data = traindata)
-
-  model.ten <- glm(success~normalize.I+dominant.freq+varR+normalize.I*varR,
-                   family = "binomial",data=traindata)  
-  #model.glm <- lme4::glmer(success~distance+mutLoad+meanLoad+normalize.I + mutLoad*normalize.I + mutLoad*meanLoad + (1|trial),
-  #                  family = "binomial", data = traindata, control = glmerControl(optimizer="bobyqa"))
-  
-  aic[n] <- extractAIC(model.ten)[2]
-  #glmer.probs <- predict(model.glm, newdata=testdata, type="response", allow.new.levels=TRUE)
-  glmer.probs <- predict(model.ten, newdata=testdata, type="response")
-  
-  glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
-  glmerperf[n] <- glmer.ROC$auc
-}
-
-
+variable.list = c(variable.1$variable)
+variable.per = c(variable.1$per)
+variable.aic = c(variable.1$AIC)
 
 ########################### second.model.results 
+
+
+variable.list
+
 dataPurged %>%
   ungroup() %>%
-  tidyr::gather(key = variable, value = value,  -success, -name, -ratio.meanR) -> data.scaled.l
+  tidyr::gather(key = variable, value = value,  -success, -name,
+                -netau, -ratio.meanSigma,-ratio.mutation) -> data.scaled.l
 data.scaled.l$value=as.numeric(data.scaled.l$value)
+
+variable.list = c(variable.list, "ratio.mutation")
+
+fixed.part.1 = "success ~ value + "
+variable.part = paste(variable.list, collapse = "+")
+fixed.part.2 = " + (1 | name)"
+
+formula = paste0(fixed.part.1, variable.part, fixed.part.2)
+
 
 double.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
@@ -147,7 +128,7 @@ double.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = functio
     testdata = x[which(x$name %in% test.trials), ]
     traindata = x[-which(x$name %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ value  + ratio.meanR + (1 | name),
+    GLMER <- lme4::glmer(formula,
                          data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=0)
     
@@ -164,14 +145,16 @@ double.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = functio
   return.data = t(c(per = performance, data.summary))
   return(return.data)
 })
+
 double.model.results %>% 
-  arrange(desc(per))
+  arrange(AIC)
 
 
 ############################### third term results
 dataPurged %>%
   ungroup() %>%
-  tidyr::gather(key = variable, value = value,  -success, -name, -ratio.meanR, -ratio.meanSigma) -> data.scaled.l
+  tidyr::gather(key = variable, value = value,-success, -name, 
+                -netau, -ratio.meanSigma, -ratio.mutation) -> data.scaled.l
 data.scaled.l$value=as.numeric(data.scaled.l$value)
 
 third.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
@@ -182,7 +165,8 @@ third.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function
     testdata = x[which(x$name %in% test.trials), ]
     traindata = x[-which(x$name %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ value  + ratio.meanSigma+ratio.meanR + (1 | name),
+    GLMER <- lme4::glmer(success ~ value  + 
+                           ratio.mutation + ratio.meanSigma + (1 | name),
                          data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=0)
     
@@ -200,19 +184,19 @@ third.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function
   return(return.data)
 })
 third.model.results %>% 
-  arrange(desc(per))
-
-third.model.results
+  arrange(AIC)
 
 ############################### Four and greater term results
 dataPurged %>%
   ungroup() %>%
   tidyr::gather(key = variable, value = value,  -success, -name, 
-                -ratio.meanR, -ratio.meanSigma, -ratio.mutation,
-                -individual.varSigma, -infected, -ratio.varR) -> data.scaled.l
-data.scaled.l$value=as.numeric(data.scaled.l$value)
+              -ratio.meanSigma, -ratio.mutation, -varR, -netau, -individual.meanSigma,
+              -individual.varSigma, -ratio.varR, -meanBeta, -infected) -> data.scaled.l
 
-seven.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
+data.scaled.l$value=as.numeric(data.scaled.l$value)
+unique(data.scaled.l$variable)
+
+nine.results = ddply(data.scaled.l, .var = c("variable"), .fun = function(x) {
   # K-fold validation for each model based on a single term 
   for(n in 1:folds.length) { 
     test.ids = folds$subsets[folds$which==n]
@@ -220,11 +204,14 @@ seven.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function
     testdata = x[which(x$name %in% test.trials), ]
     traindata = x[-which(x$name %in% test.trials),]
     
-    GLMER <- lme4::glmer(success ~ value  + individual.varSigma + ratio.mutation + 
-                           ratio.meanSigma+ratio.meanR + infected + ratio.varR +
-                           ratio.varBeta + (1 | name),
+    GLMER <- lme4::glmer(success ~ value  + 
+                           ratio.meanSigma + 
+                           ratio.mutation + varR +
+                           individual.meanSigma + individual.varSigma + 
+                           ratio.varR + meanBeta + infected + (1 | name),
                          data = traindata, family="binomial", 
                          control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+    
     
     data.summary1 = glance(GLMER); data.summary2 = tidy(GLMER)[2,2:5]
     data.summary = bind_cols(data.summary1,data.summary2)
@@ -235,60 +222,86 @@ seven.model.results = ddply(data.scaled.l, .var = c("variable"), .fun = function
   }
   performance=mean(glmerperf)
   data.summary = colMeans(as.data.frame(data.summary.mat))
-  print(x$variable[1])
-  return.data = t(c(per = performance, data.summary))
-  return(return.data)
+  return(t(c(per = performance, data.summary)))
 })
-seven.model.results %>% 
-  arrange(desc(per))
+nine.model.results %>% 
+  arrange(AIC)
 
+
+
+############################## Anova 
+dataPurged %>%
+  ungroup() %>%
+  dplyr::select(success, name,
+                netau, ratio.meanSigma, ratio.mutation, varR,
+                individual.meanSigma, individual.varSigma, ratio.varR,
+                infected, entropy, diversity) -> data.scaled.l
+anova.results = rep(0, folds.length)
+
+for(n in 1:folds.length) { 
+    test.ids = folds$subsets[folds$which==n]
+    test.trials = unique(data.scaled.l$name)[test.ids]
+    testdata = data.scaled.l[which(data.scaled.l$name %in% test.trials), ]
+    traindata = data.scaled.l[-which(data.scaled.l$name %in% test.trials),]
+    
+    GLMER.null <- lme4::glmer(success ~ ratio.meanSigma + ratio.mutation + varR + 
+                                individual.meanSigma + individual.varSigma + 
+                                ratio.varR + infected + entropy + (1 | name),
+                         data = traindata, family="binomial", 
+                         control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+    GLMER.test <- lme4::glmer(success ~ ratio.meanSigma + ratio.mutation + varR + 
+                                individual.meanSigma + individual.varSigma + 
+                                ratio.varR + infected + entropy + diversity +  (1 | name),
+                              data = traindata, family="binomial", 
+                              control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+  anova.test = anova(GLMER.null, GLMER.test)
+  anova.results[n] = anova.test$`Pr(>Chisq)`[2]
+  }
+mean(anova.results)
 
 ############################## Interaction
 dataPurged %>%
   ungroup() %>%
-  select(success, name, ratio.meanR, ratio.meanSigma, ratio.mutation,
-                individual.varSigma, infected, ratio.varR) -> data.scaled.l
-
+  dplyr::select(success, name,
+                ratio.meanSigma, ratio.mutation, varR, individual.meanSigma, 
+                individual.varSigma, ratio.varR, meanBeta, infected) -> data.scaled.l
+anova.test=rep(0,folds.length)
 for(n in 1:folds.length) { 
   test.ids = folds$subsets[folds$which==n]
   test.trials = unique(data.scaled.l$name)[test.ids]
-  
   testdata = data.scaled.l[which(data.scaled.l$name %in% test.trials), ]
   traindata = data.scaled.l[-which(data.scaled.l$name %in% test.trials),]
   
-  model.null <- lme4::glmer(success ~ ratio.meanR + ratio.meanSigma + ratio.mutation +
-                              individual.varSigma +infected + ratio.varR  +  (1 | name),
+  model.null <- lme4::glmer(success ~ individual.varSigma*ratio.varR + 
+                              varR*individual.meanSigma + 
+                              ratio.mutation*ratio.varR +
+                              ratio.mutation*meanBeta + 
+                              ratio.meanSigma + ratio.mutation + varR +
+                              individual.meanSigma + individual.varSigma + 
+                              ratio.varR + meanBeta + infected + (1 | name),
                             data = traindata, family="binomial", 
-                            control = glmerControl(optimizer="bobyqa"),nAGQ=10)
-  
-  model.int <- lme4::glmer(success ~ ratio.meanR*ratio.meanSigma + 
-                             ratio.meanR + ratio.meanSigma + ratio.mutation +
-                             individual.varSigma +infected + ratio.varR  +  (1 | name),
+                            control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+  model.int <- lme4::glmer(success ~meanBeta*infected+ 
+                             ratio.mutation * meanBeta + ratio.mutation*ratio.varR + 
+                             varR*individual.meanSigma + individual.varSigma*ratio.varR  +
+                             ratio.meanSigma + ratio.mutation + varR + individual.meanSigma + 
+                             individual.varSigma +  ratio.varR + meanBeta + infected + (1 | name),
                            data = traindata, family="binomial", 
-                           control = glmerControl(optimizer="bobyqa"),nAGQ=10)
- 
-  anova.test = anova(model.null, model.int)
-  data.summary1 = glance(model.int); data.summary2 = tidy(model.int)[8,2:5]
-  data.summary = bind_cols(data.summary1,data.summary2)
-  data.summary.mat[n,] = data.summary
+                           control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+  model.test = anova(model.null, model.int)
+  anova.test[n] = model.test$`Pr(>Chisq)`[2]
+  data.summary1 = glance(model.int); data.summary2 = tidy(model.int)[10,2:5]
+  data.summary.mat[n,] = bind_cols(data.summary1,data.summary2)
   glmer.probs <- predict(model.int, newdata=testdata, type="response", allow.new.levels=TRUE)
   glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
   glmerperf[n] <- glmer.ROC$auc
 } 
-performance=mean(glmerperf)
-
-data.summary = colMeans(as.data.frame(data.summary.mat))
-return.data = t(c(per = performance, data.summary, anova.test = anova.test$`Pr(>Chisq)`))
-  return(return.data)
-  
-  return.data = t(c(per = performance, data.summary))
-  
-  # print(anova(model.null, model.int, test="Chisq"))
-}
+mean(anova.test)
+mean(glmerperf)
+colMeans(as.data.frame(data.summary.mat))
 
 
-
-
+summary(model.int)
 
 
 
@@ -425,32 +438,78 @@ binnedplot(fitted(modelnull),resid(modelnull))
 GLMER <- lme4::glmer(success ~ antigenicTypes + diversity  + (1 | trial), data = dataPurged, family="binomial", 
                      control = glmerControl(optimizer="bobyqa"),nAGQ=10)
 
+freq.explore %>%
+  filter(freq == ".01") -> freq.01
+
+levels(dataScaled$success)
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+freq.01.model <- lme4::glmer(success~ratio.meanR + ratio.meanSigma+ratio.mutation+individual.varSigma+infected+ratio.varR +
+                               ratio.varBeta + infected*ratio.varBeta+ratio.meanR*ratio.mutation + infected*ratio.varR + (1 | name),
+                             data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+freq.02.model <- lme4::glmer(success~ ratio.meanR + ratio.meanSigma + ratio.mutation + 
+                               individual.varSigma + antigenicTypes+ratio.varR + 
+                               tmrca + ratio.meanR*ratio.mutation + antigenicTypes*ratio.varR + (1 | name),
+                             data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+freq.05.model <- lme4::glmer(success~ratio.meanR + ratio.meanSigma+ratio.mutation+ratio.varSigma +
+                               ratio.varR + antigenicTypes +  (1 | name), data = dataScaled, family = "binomial", 
+                                                         control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+colnames(dataScaled)
+diff.second.model <- lme4::glmer(success~ratio.meanBeta+covBetaSigma+dominant.freq+varR+individual.varSigma+infected + (1 | name),
+                                 data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+three.point.model <- lme4::glmer(success~five_ratio.meanR + five_meanR + five_varR + second_meanR + 
+                                  five_individual.varSigma+five_ratio.varBeta + first_ratio.meanSigma+five_ratio.mutation +
+                                  five_ratio.meanR*second_meanR + (1 | name), data = dataScaled, family = "binomial",
+                                 control = glmerControl(optimizer="bobyqa", nAGQ=10)) 
+
+second.point.model <- lme4::glmer(success~first_ratio.meanSigma + first_ratio.mutation + second_infected + 
+                                    first_varR + first_meanR + first_varR*first_meanR + (1 | name), 
+                                  data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+diff.two.point.model <- lme4::glmer(success~second.diff.ratio.meanBeta+ first.diff.varR + second.diff.dominant.freq + first.diff.ratio.meanBeta + 
+                                      second.diff.I + second.diff.individual.varSigma+second.diff.covBetaSigma+second.diff.dominant.freq*second.diff.I + (1|name),
+                                    data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+diff.second.growth.model <- lme4::glmer(success~ratio.meanBeta + covBetaSigma+dominant.freq+varR +individual.varSigma +
+                                          infected + (1 | name), data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+
+
+dataScaled$success <- relevel(dataScaled$success, ref = "Transient")
+diff.first.growth.model <- lme4::glmer(success~ varR + ratio.meanBeta + individual.meanSigma + covBetaSigma + (1 | name), data = dataScaled, family = "binomial", control = glmerControl(optimizer="bobyqa", nAGQ=10))
+
+
+
+summary(freq.05.model)
+summary(freq.02.model)
+summary(three.point.model)
+summary(second.point.model)
+summary(diff.two.point.model)
+summary(diff.second.growth.model)
+summary(diff.first.growth.model)
 
 library(sjPlot)
 library(sjmisc)
 library(sjlabelled)
 
-sjp.glmer(model.glm)
-lme4::fixef(GLMER)
-
-summary(GLMER)
-
-sjp.glmer(GLMER, 
-          sort.est = "sort.all",
-          type = "pred",
-          vars = "dominant.freq") 
-y.offset = .4)
-          #vars = "antigenicTypes",
-          #type = "fe.slope")
-
-sjp.glmer(GLMER, type = "fe.slope")
-sjp.int(GLMER, type = "cond")
-
-
-
-
-  
-  ##################### Random Forests Model ##########################
+sjp.glmer(freq.05.model, type = "fe") 
+sjp.glmer(freq.02.model, type = "fe")
+sjp.glmer(three.point.model, type = "fe")
+sjp.glmer(second.point.model, type = "fe")
+sjp.glmer(diff.two.point.model, type = "fe")  
+sjp.glmer(diff.first.growth.model, type = "fe")
+##################### Random Forests Model ##########################
 library(rpart)
 library(e1071)
 library(rpart.plot)
@@ -464,3 +523,31 @@ cartGrid <- expand.grid(.cp=(1:50)*0.01)
 tree_model <- train(success ~., data = traindata, method = "rpart", trControl = fitControl, tuneGrid = cartGrid)
 print(tree_model)
 
+
+
+
+##########################################
+
+model.summary <- read.csv("../data/model.csv", header = TRUE)
+
+model.types = c("difference.first", "difference.second", "diff.first+second",
+                "state.01", "state.02", "state.03", "state.01+02+05", "state.01+02")
+model.summary %>%
+  ggplot(aes(x=as.factor(Term), y = Per, group = Model, color = Model)) + geom_line(size = 1.2) +
+  labs(x = "Number of Terms", y = "5-Fold CV AUC") + scale_color_brewer(palette = "Spectral", labels = model.types) -> model.summary.plot
+
+save_plot(fig = model.summary.plot, filename = "exploratory.figs/model.summary.plot.pdf", base_aspect_ratio = 1.6)
+
+freq.models = c("freq.01", "freq.02", "freq.05")
+diff.models = c("diff.first", "diff.second")
+time.point.freq = c("two.point", "three.point")
+
+unique(model.summary$Model)
+
+model.summary %>%
+  filter(Model== "three.point") %>%
+  arrange(Term)
+
+
+
+  

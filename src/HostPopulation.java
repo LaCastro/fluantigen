@@ -1327,6 +1327,7 @@ public class HostPopulation {
                                     int sndex = getRandomS();			
                                     Host iH = testH; //infecteds.get(index);			
                                     Host sH = susceptibles.get(sndex);						
+                                   
                                     Virus v = iH.getInfection();
 
                                     // attempt infection

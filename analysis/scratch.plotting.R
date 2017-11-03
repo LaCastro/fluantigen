@@ -98,19 +98,47 @@ freq.explore = rbind(data.frame(freq = ".01", freq.one),
                      data.frame(freq = ".05", freq.five))
 
 
-freq.explore %>%
+freq.five %>%
   mutate(ratio.mutation = individual.meanMut/meanLoad,
          ratio.meanR = individual.meanR/meanR,
          ratio.varR = individual.varR/varR,
          ratio.meanBeta = individual.meanBeta/meanBeta,
          ratio.varBeta = individual.varBeta/varBeta,
          ratio.meanSigma = individual.meanSigma/meanSigma,
-         ratio.varSigma = individual.varSigma/varSigma) -> freq.explore
+         ratio.varSigma = individual.varSigma/varSigma) %>%
+  filter(day != 1833) -> freq.five.2
+
+
+predictorNames = colnames(freq.five.2)
+freq.five.2 = freq.five.2[,-which(predictorNames%in%exclude.emerge)]
+
+identifier.variables = c("antigentype", "success", "name")
+colnames(freq.one.2)[-which(colnames(freq.one.2)%in%identifier.variables)] = paste0("first_", colnames(freq.one.2)[-which(colnames(freq.one.2)%in%identifier.variables)])
+colnames(freq.two.2)[-which(colnames(freq.two.2)%in%identifier.variables)] = paste0("second_", colnames(freq.two.2)[-which(colnames(freq.two.2)%in%identifier.variables)])
+colnames(freq.five.2)[-which(colnames(freq.five.2)%in%identifier.variables)] = paste0("five_", colnames(freq.five.2)[-which(colnames(freq.five.2)%in%identifier.variables)])
+
+freq.one.2 %>%
+  gather(variable, value, -antigentype, -success,-name) -> freq.one.l
+
+
+freq.two.2 %>%
+  gather(variable, value, -antigentype, -success, -name) %>%
+  bind_rows(freq.one.l)-> freq.explore.l
+
+freq.five.2 %>%
+  gather(variable, value, -antigentype, -success, -name) %>%
+  bind_rows(freq.explore.l) -> freq.explore.3
+
+freq.explore.3 %>% spread(key=variable, value = value) -> three.point.data
+
+
+
+
 
 freq.explore %>%
-  filter(day != 1833) %>%
-  filter(freq == ".01") -> freq.first.check
+  filter(day != 1833) -> freq.five.check
 
+  filter(freq == ".01") 
 # calculating the ratios 
 individual = c("individual.meanMut", "individual.varMut", "individual.meanR", 
                "individual.varR", "individual.meanBeta", "individual.varBeta", 
@@ -152,9 +180,22 @@ freq.explore %>%
   mutate_at("name", as.factor) -> diff.df
 
 
+
 diff.df %>%
   select(-second.growth) %>%
   spread(key = variable, first.growth) -> diff.first.growth
+
+
+
+colnames(diff.second.growth)[-which(colnames(diff.second.growth)%in%identifier.variables)]=paste0("second.diff.", colnames(diff.second.growth)[-which(colnames(diff.second.growth)%in%identifier.variables)])
+colnames(diff.first.growth)[-which(colnames(diff.first.growth)%in%identifier.variables)]=paste0("first.diff.", colnames(diff.first.growth)[-which(colnames(diff.first.growth)%in%identifier.variables)])
+colnames(freq.five.2)[-which(colnames(freq.five.2)%in%identifier.variables)] = paste0("five_", colnames(freq.five.2)[-which(colnames(freq.five.2)%in%identifier.variables)])
+
+
+head(diff.second.growth)
+diff.two.point = left_join(diff.second.growth, diff.first.growth, by = c("name", "antigentype", "success"))
+
+
 
 individual = c("individual.meanMut", "individual.varMut", "individual.meanR", 
                "individual.varR", "individual.meanBeta", "individual.varBeta", 
@@ -174,10 +215,5 @@ save_plot(ratios.diff.plot, filename = "exploratory.figs/ratios.diff.plot.pdf",
           base_height = 8, base_aspect_ratio = 1.8)
 
 
-
-
-diff.df %>%
-
-  
-first_growth = function(x) {x[2]-x[1]}
+first_growth = function(x){x[2]-x[1]}
 second_growth = function(x){x[3]-x[2]}

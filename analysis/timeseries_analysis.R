@@ -2,13 +2,11 @@ rm(list=ls())
 source('analysis_functions.R'); source('plotting_functions.R'); source('loadLibraries.R')
 
 # Plotting Timeseries Analysis 
-data.folder = "../data/tropics_30/"
-eligible.folder = "../data/tropics_30/eligible/"
+data.folder = "../data/tropics_30/eligible/"
 fig.folder = "exploratory.figs/north_figures/"
 
 
 eligible.folder.list = dir(eligible.folder)
-which(eligible.folder.list %in% trials.eligible )
 
 timeseries = read_outputfiles(dir = data.folder, type = "/out.timeSeries.txt")
 trials = unique(timeseries$.id)

@@ -119,11 +119,16 @@ gather_data_freq2 <- function(trial, surveillance.freq) {
     right_join(surv.data, by = c("antigentype" = "antigentype")) -> surv.data
   # read in and extract from the viral fitness
   
-  fitness <- read.table(paste0(tropics.folder, trial.name, "/out.viralFitnessSeries.txt"), header = TRUE)
-  fitness %>%
+  entropy[[eval(trial.name)]] %>%
     filter(day %in% surv.data$first.day) %>%
     filter(!duplicated(day)) %>%
-    right_join(surv.data, by = c("day" = "first.day")) -> surv.data  ### at this point first.day becomes day 
+    right_join(surv.data, by = c("day" = "first.day")) -> surv.data
+  
+  fitness <- read.table(paste0(tropics.folder, trial.name, "/out.viralFitnessSeries.txt"), header = TRUE)
+  fitness %>%
+    filter(day %in% surv.data$day) %>%
+    filter(!duplicated(day)) %>%
+    right_join(surv.data, by = "day") -> surv.data  ### at this point first.day becomes day 
   
   # read in and extract from the timeseries 
   timeseries = read.table(paste0(tropics.folder, trial.name, "/out.timeseries.txt"), header = TRUE)
@@ -184,7 +189,7 @@ replace_na_zeros = function(x) {
 determine_success_labels = function(x) {
   x %>%
     mutate(success = ifelse(days > 45, "Est.", 
-                            ifelse(final.max > .1, "Transient", "no")))
+                            ifelse(final.max > .05, "Transient", "no")))
 }
 filter_out_loss = function(x) {
   x %>%
@@ -232,8 +237,39 @@ clean_gathered_data = function(entry) {
   }
 }
 
+
+###########
+first_growth = function(x,day){(x[2]-x[1])/(day[2]-day[1])}
+second_growth = function(x,day){(x[3]-x[2])/(day[3]-day[2])}
+third_growth = function(x,day){(x[4]-x[3])/(day[4]-day[3])}
+fourth_growth = function(x,day){(x[5]-x[4])/(day[5]-day[4])}
+calculate_ratios = function(data.set) {  
+  data.set %>%
+    mutate(ratio.mutation = individual.meanMut/meanLoad,
+           ratio.meanR = exp(individual.meanR)/meanR,
+           ratio.varR = individual.varR/varR,
+           ratio.meanBeta = exp(individual.meanBeta)/meanBeta,
+           ratio.varBeta = individual.varBeta/varBeta,
+           ratio.meanSigma = individual.meanSigma/meanSigma,
+           ratio.varSigma = individual.varSigma/varSigma) 
+}
+remove_columns = function(data.set) {
+  excluded.variables = c("N", "S", "I", "R", "cases", "cumulativeTypes", "dominant.type", "totalCases")
+  data.set %>%
+    select(-one_of(excluded.variables)) 
+}
+calculate_entropy = function(antigen.frequency) {
+  antigen.frequency %>%
+    group_by(day) %>%
+    mutate(log.frequency = log(1/frequency),
+           ind.term = frequency * log.frequency) %>%
+    summarize(entropy = sum(ind.term))
+}
+
+
+
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
-tropics.folder = "../data/tropics/eligible/"
+tropics.folder = "../data/tropics_30/eligible/"
 trial.dirs = dir(tropics.folder)
 
 # This is a slow step
@@ -255,7 +291,7 @@ antigen.frequencies %>%
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
   map(determine_success_labels)
-names(full.data) = trial.dirs
+#names(full.data) = trial.dirs
 rm(max.frequencies, days.above)
 
 ####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
@@ -267,26 +303,82 @@ subset.df %>%
   filter(antigentype != 0) -> subset.analyze
 
 ####### Step 4: Create Meta Data for these 
-meta.data = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_emerge(trial)) %>%
-  mutate(id = paste0(postAntigen, "_", name))
+#meta.data = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_emerge(trial)) %>%
+#  mutate(id = paste0(postAntigen, "_", name))
+#meta.data %>%
+#  filter(is.na(meanLoad) | is.na(frequency) | is.na(varBeta)) -> missing
+#missing.filled = adply(.data = missing, .margins = 1, clean_gathered_data)
+#meta.data %>%
+#  filter(!(id %in% missing$id)) %>%
+#  bind_rows(missing.filled) -> meta.data
 
-## 4.5 Clean up Meta Data 
-meta.data %>%
-  filter(is.na(meanLoad) | is.na(frequency) | is.na(varBeta)) -> missing
-missing.filled = adply(.data = missing, .margins = 1, clean_gathered_data)
-meta.data %>%
-  filter(!(id %in% missing$id)) %>%
-  bind_rows(missing.filled) -> meta.data
+
+######### Step 4 - Calculate Entropy
+entropy = map(antigen.frequencies, calculate_entropy)
+names(entropy) = trial.dirs
+#entropy.df = do.call("rbind", entropy)
+#entropy.df$name = rep(trial.dirs, sapply(entropy, nrow))
+
 
 ####### Step 5: Create Meta Data at different time points
-### This may become Step 4 
-
 freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
 freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
+freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .03))
+freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
 freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
 
+freq.list = list(freq.one, freq.two, freq.three, freq.four, freq.five) 
 
-###Calculates the number of days an antigen type is present above a certain frequency
+######## Step 6: Remove extra rows 
+freq.list = map(freq.list, remove_columns)
+
+######## Step 7: Calculate Ratio of fitness 
+freq.list.ratio = map(freq.list, calculate_ratios)
 
 
 
+  
+###### Step 8: Calculate Difference Data Sets 
+freq.df =  do.call("rbind", freq.list.ratio)
+freq.df$freq = rep(c("freq.01", "freq.02", "freq.03", "freq.04", "freq.05"), sapply(freq.list.ratio, nrow))
+
+#### Step 8.5 - remove those that span  the burn in period 
+freq.df %>%
+  group_by(antigentype, name) %>%
+  filter(day == 1833) %>%
+  summarize(antigen.to.exclude = unique(antigentype))%>%
+  mutate(.id = paste0(name, "_", antigen.to.exclude)) -> not.full.dataset
+
+freq.df %>%
+  mutate(.id = paste0(name, "_", antigentype)) %>%
+  filter(!(.id %in% not.full.dataset$.id)) %>%
+  select(-.id) -> freq.df.subset
+
+
+
+
+freq.df %>%
+  group_by(antigentype, name) %>%
+  gather(key = variable, value = value, -freq,-day,-antigentype,-success,-name) %>%
+  arrange(antigentype) %>%
+  group_by(name, antigentype, variable) %>%
+  summarize(first.gp = first_growth(value,day),
+            second.gp = second_growth(value, day),
+            day.01 = day[1],
+            day.03 = day[2],
+            day.05 = day[3],
+            #third.gp = third_growth(value,day),
+            #fourth.gp = fourth_growth(value,day),
+            success = success[1]) %>%
+  ungroup() %>%
+  mutate_at("name", as.factor) -> diff.df
+  
+################ Step 9: Calculate Acceleration
+diff.df %>%
+  filter(day.01 != 1833 & day.03 != 1883) -> diff.df.subset
+
+diff.df.subset %>%
+  mutate(accelerate = second.gp - first.gp) -> diff.df.subset
+
+
+  
