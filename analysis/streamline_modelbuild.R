@@ -17,7 +17,6 @@ anova.results = rep(0, folds.length)
 fixed.part.1 = "success ~ value + "
 fixed.part.2 = " + (1 | name)"
 
-
 dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
 
 while(build == TRUE) {
@@ -26,7 +25,7 @@ while(build == TRUE) {
     formula = "success~value + (1 | name)"
     dataPurged %>%
       ungroup() %>%
-      gather(key = variable, value = value, -success, -name, -netau) %>%
+      gather(key = variable, value = value, -success, -name) %>%
       mutate_at("value", as.numeric) -> data.scaled.l
   } else { # There are already significant variables 
     variable.part = paste(variable.list, collapse = "+")
@@ -35,7 +34,7 @@ while(build == TRUE) {
     
     dataPurged %>%
       ungroup() %>%
-      gather(key = variable, value = value, -success, -name, -netau, -one_of(variable.list)) %>%
+      gather(key = variable, value = value, -success, -name,  -one_of(variable.list)) %>%
       mutate_at("value", as.numeric) -> data.scaled.l
   }
   
@@ -77,16 +76,13 @@ while(build == TRUE) {
       print(paste0("Adding : ", variable$variable))
     } else { 
       print(paste0("Final Single Term Model is: ", formula.null))
-      build == FALSE
-      return()
+      build = FALSE
     }
 }
-
 single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
 
 ############## STEP TWO: Interactions 
 base.formula = paste0(paste(variable.list, collapse = "+"), "+(1|name)")
-
 # Generates possible combinations 
 combn.df = data.frame(combn(variable.list, m=2))
 comb.list = unname(apply(combn.df, MARGIN = 2, function(x) paste(x, collapse = "*")))
@@ -94,10 +90,10 @@ comb.list = unname(apply(combn.df, MARGIN = 2, function(x) paste(x, collapse = "
 dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
 dataPurged %>%
   ungroup() %>%
-  dplyr::select(success, name, netau, one_of(variable.list)) -> data.scaled.l
+  dplyr::select(success, name, one_of(variable.list)) -> data.scaled.l
 
 # Initialize Variables 
-build == TRUE
+build = TRUE
 anova.results = rep(0, folds.length)
 term.placement = length(variable.list) + 2
 int.list = c()
@@ -124,7 +120,6 @@ while(build == TRUE) {
                                 control = glmerControl(optimizer="bobyqa"),nAGQ=0)
       model.int <- lme4::glmer(test.formula, data = traindata, family="binomial", 
                                control = glmerControl(optimizer="bobyqa"),nAGQ=0)
-      
       model.test = anova(model.null, model.int)
       anova.results[n] = model.test$`Pr(>Chisq)`[2]
       data.summary.mat[n,] = c(glance(model.int)[3], tidy(model.int)[term.placement,5])
@@ -132,18 +127,17 @@ while(build == TRUE) {
       glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
       glmerperf[n] <- glmer.ROC$auc
     } 
-    if(mean(anova.results) < .05) {# 
-      info = data.frame(t(c(per = mean(glmerperf), colMeans(as.data.frame(data.summary.mat)), anova = anova.mean)))
+    if(mean(anova.results) < .05) { # If the variable is significant-keep track  
+      info = data.frame(t(c(per = mean(glmerperf), colMeans(as.data.frame(data.summary.mat)), anova = mean(anova.results))))
       info$combo = combo
       contenders = rbind(contenders, info)
     } 
   }
   
-  if(nrow(contenders) == 0) {
+  if(nrow(contenders) == 0) { # If none of the variables were 
     print(paste0("Final Model is:", formula.null))
     coefficient.estimates = tidy(model.null)
-    build == FALSE
-    return()
+    build = FALSE
   } else {
     variable = contenders %>% arrange(AIC) %>% slice(1)
     int.list = c(int.list, variable$combo)
@@ -152,14 +146,40 @@ while(build == TRUE) {
     print(paste0("Selecting - ", variable$combo))
   }
 }
-
-
-
 interaction.term.results = bind_cols(variable = int.list, per =  int.per, aic = int.aic)
 
 
+full.model = rbind(single.term.results , interaction.term.results)
+full.model.results = full_join(full.model, coefficient.estimates, by = c("variable" = "term"))
+full.model.results
+write.csv(full.model.results, '../results/full.model.csv')
+
+calculate_SenSpec(glmer.probs, testdata)
 
 
+################################ Looking at ROC 
+
+
+calculate_SenSpec <- function(model.probs, testdata) {
+  performance.data = data.frame(cbind(glmer.probs, truth=testdata$success))
+  performance.data %>%
+    mutate(predicted = ifelse(glmer.probs < .5, 1,2)) -> performance.data
+  data.table = table(Truth = performance.data$truth, Prediction = performance.data$predicted)
+  tpr =  sensitivity(data.table, positive = "2")
+  tnr =  specificity(data.table, negative = "1")
+  return(c(sen = tpr, spec = tnr))
+}
+
+roc.data = data.frame(cbind(thres = glmer.ROC$thresholds,
+                            sen = glmer.ROC$sensitivities,
+                            spec = glmer.ROC$specificities))
+
+roc.data %>% 
+  filter(thres > .48) %>% 
+  arrange(thres) 
+
+
+### Need to get estimates 
 plot_pred_type_distribution <- function(df, threshold) {
   v <- rep(NA, nrow(df))
   v <- ifelse(df$pred >= threshold & df$survived == 1, "TP", v)
@@ -176,8 +196,6 @@ plot_pred_type_distribution <- function(df, threshold) {
     scale_color_discrete(name = "type") +
     labs(title=sprintf("Threshold at %.2f", threshold))
 }
-
-
 set_test_data <- function(data, fold) {
   test.ids = fold$row.index
   testnames = unique(data$name)[test.ids]

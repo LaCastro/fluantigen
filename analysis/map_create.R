@@ -239,10 +239,7 @@ clean_gathered_data = function(entry) {
 
 
 ###########
-first_growth = function(x,day){(x[2]-x[1])/(day[2]-day[1])}
-second_growth = function(x,day){(x[3]-x[2])/(day[3]-day[2])}
-third_growth = function(x,day){(x[4]-x[3])/(day[4]-day[3])}
-fourth_growth = function(x,day){(x[5]-x[4])/(day[5]-day[4])}
+
 calculate_ratios = function(data.set) {  
   data.set %>%
     mutate(ratio.mutation = individual.meanMut/meanLoad,
@@ -270,6 +267,7 @@ calculate_entropy = function(antigen.frequency) {
 
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
 tropics.folder = "../data/tropics_30/eligible/"
+tropics.folder = "../data/tropics/eligible/"
 trial.dirs = dir(tropics.folder)
 
 # This is a slow step
@@ -291,7 +289,6 @@ antigen.frequencies %>%
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
   map(determine_success_labels)
-#names(full.data) = trial.dirs
 rm(max.frequencies, days.above)
 
 ####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
@@ -316,9 +313,6 @@ subset.df %>%
 ######### Step 4 - Calculate Entropy
 entropy = map(antigen.frequencies, calculate_entropy)
 names(entropy) = trial.dirs
-#entropy.df = do.call("rbind", entropy)
-#entropy.df$name = rep(trial.dirs, sapply(entropy, nrow))
-
 
 ####### Step 5: Create Meta Data at different time points
 freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
@@ -335,9 +329,6 @@ freq.list = map(freq.list, remove_columns)
 ######## Step 7: Calculate Ratio of fitness 
 freq.list.ratio = map(freq.list, calculate_ratios)
 
-
-
-  
 ###### Step 8: Calculate Difference Data Sets 
 freq.df =  do.call("rbind", freq.list.ratio)
 freq.df$freq = rep(c("freq.01", "freq.02", "freq.03", "freq.04", "freq.05"), sapply(freq.list.ratio, nrow))
@@ -354,31 +345,35 @@ freq.df %>%
   filter(!(.id %in% not.full.dataset$.id)) %>%
   select(-.id) -> freq.df.subset
 
+############## Section 9 - Calculate Growth Differences 
 
+calculate_growth_phase = function(x, phase1, phase2) {
+  (x[phase2]-x[phase1])
+}
 
-
-freq.df %>%
+freq.df.subset %>%
   group_by(antigentype, name) %>%
-  gather(key = variable, value = value, -freq,-day,-antigentype,-success,-name) %>%
+  gather(key = variable, value = value, -freq,-antigentype,-success,-name) %>%
   arrange(antigentype) %>%
   group_by(name, antigentype, variable) %>%
-  summarize(first.gp = first_growth(value,day),
-            second.gp = second_growth(value, day),
-            day.01 = day[1],
-            day.03 = day[2],
-            day.05 = day[3],
-            #third.gp = third_growth(value,day),
-            #fourth.gp = fourth_growth(value,day),
+  summarize(first.gp = calculate_growth_phase(value, phase1 = 1, phase2 = 3),
+            second.gp = calculate_growth_phase(value, phase1 = 3, phase2 = 5),
             success = success[1]) %>%
   ungroup() %>%
   mutate_at("name", as.factor) -> diff.df
-  
+
+diff.df %>%
+  select(-first.gp) %>%
+  spread(key = variable, value = second.gp) -> growth.2.subset
+
 ################ Step 9: Calculate Acceleration
 diff.df %>%
-  filter(day.01 != 1833 & day.03 != 1883) -> diff.df.subset
+  mutate(accelerate = second.gp - first.gp) -> diff.df
 
-diff.df.subset %>%
-  mutate(accelerate = second.gp - first.gp) -> diff.df.subset
+diff.df %>%
+  select(-first.gp, -second.gp) %>%
+  spread(key = variable, value = accelerate) -> accelerate
+head(accelerate)
 
 
-  
+ 
