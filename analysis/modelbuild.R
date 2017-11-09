@@ -24,41 +24,43 @@ ratio.fitness = c("ratio.mutation", "ratio.meanR", "ratio.varR", "ratio.meanBeta
 freq.df.subset %>%
   filter(freq == "freq.01") -> freq.1.subset
 
-data = accelerate
+data = freq.df.subset
 
 data  <- within(data, {
   success <- factor(success) #, levels=c("Est.", "Transient"))
   name <- as.factor(name)
-#  freq <- as.factor(freq)
+  freq <- as.factor(freq)
   antigentype <- as.factor(antigentype)
 })
 
 #dataScaled = data %>% select(success, name, antigentype) # Snap shot 
-dataScaled = data %>% select(-simDay,-totalI, -netau) # Growth Difference 
-
-#dataScaled$netau[is.infinite(dataScaled$netau)] <- NA
-factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-dataScaled[,-factor.variables] <- lapply(dataScaled[,-factor.variables],scale)
+dataScaled = data %>% select(-simDay,-totalI, -netau, -freq, -antigentype,-day) %>%
+  mutate_if(is.numeric, scale) # Growth Difference 
 
 ########## Fit first model 
-trial.all <- glmer(success ~.-name-antigentype + (1| name), data = dataScaled, family = binomial,
+trial.all <- glmer(success ~.-name + (1| name), data = dataScaled, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+
 vif.results = data.frame(vif.mer(trial.all))
 # Snap Shot 
-#vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
+vif.excluded = c("individual.meanMut", "individual.varMut", "individual.meanBeta",
+                 "individual.meanR", "individual.meanSigma", "ratio.meanSigma", "meanSigma",
+                 "covBetaSigma", "meanBeta", "individual.varR", "individual.varBeta", "ratio.varR",
+                 "antigenicTypes")
+#, "individual.meanBeta", "individual.varR",
 #                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
 #                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
 #                 "ratio.meanBeta","antigenicTypes", "totalI", "day")
 # Growth Differences 
-vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
-                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
-                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
-                 "ratio.meanBeta","totalI")
+#vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
+#                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
+#                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
+#                 "ratio.meanBeta","totalI")
 
 #dataPurged = dataScaled
 
 dataPurged = dataScaled[,-which(colnames(dataScaled) %in% vif.excluded)]
-trial.purged <- lme4::glmer(success ~.-name-antigentype + (1 | name), data = dataPurged, family = binomial,
+trial.purged <- lme4::glmer(success ~.-name + (1 | name), data = dataPurged, family = binomial,
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
 vif.results = data.frame(vif.mer(trial.purged))
 vif.results %>% arrange(desc(vif.mer.trial.purged.)) %>% head()

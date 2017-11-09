@@ -19,6 +19,7 @@ fixed.part.2 = " + (1 | name)"
 
 dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
 
+
 while(build == TRUE) {
   # Step 1: Sets the formula and manipulates the data set
   if(length(variable.list) == 0 )  { # This is the first round
@@ -152,11 +153,14 @@ interaction.term.results = bind_cols(variable = int.list, per =  int.per, aic = 
 full.model = rbind(single.term.results , interaction.term.results)
 full.model.results = full_join(full.model, coefficient.estimates, by = c("variable" = "term"))
 full.model.results
-write.csv(full.model.results, '../results/full.model.csv')
+write.csv(full.model.results, '../results/full.model.trans01.csv')
 
 calculate_SenSpec(glmer.probs, testdata)
 
-
+roc.trans.01 = data.frame(cbind(sen = glmer.ROC$sensitivities,
+                                 spec = glmer.ROC$specificities, 
+                                 thres = glmer.ROC$thresholds))
+write.csv("../results/roc.trans.01.csv", x = roc.trans.01)
 ################################ Looking at ROC 
 
 
@@ -170,13 +174,6 @@ calculate_SenSpec <- function(model.probs, testdata) {
   return(c(sen = tpr, spec = tnr))
 }
 
-roc.data = data.frame(cbind(thres = glmer.ROC$thresholds,
-                            sen = glmer.ROC$sensitivities,
-                            spec = glmer.ROC$specificities))
-
-roc.data %>% 
-  filter(thres > .48) %>% 
-  arrange(thres) 
 
 
 ### Need to get estimates 

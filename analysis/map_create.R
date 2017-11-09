@@ -189,7 +189,7 @@ replace_na_zeros = function(x) {
 determine_success_labels = function(x) {
   x %>%
     mutate(success = ifelse(days > 45, "Est.", 
-                            ifelse(final.max > .05, "Transient", "no")))
+                            ifelse(final.max > .02, "Transient", "no")))
 }
 filter_out_loss = function(x) {
   x %>%
@@ -236,10 +236,6 @@ clean_gathered_data = function(entry) {
     return(entry)
   }
 }
-
-
-###########
-
 calculate_ratios = function(data.set) {  
   data.set %>%
     mutate(ratio.mutation = individual.meanMut/meanLoad,
@@ -264,7 +260,7 @@ calculate_entropy = function(antigen.frequency) {
 }
 
 
-
+###########
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
 tropics.folder = "../data/tropics_30/eligible/"
 tropics.folder = "../data/tropics/eligible/"
@@ -289,7 +285,15 @@ antigen.frequencies %>%
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
   map(determine_success_labels)
-rm(max.frequencies, days.above)
+#rm(max.frequencies, days.above)
+
+full.data.df = do.call("rbind", full.data)
+full.data.analyze = full.data.df %>% filter(antigentype != 0)
+
+full.data.analyze %>%
+  group_by(success) %>%
+  summarize(num = n()) %>%
+  mutate(freq = num/sum(num))
 
 ####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
 subset.data = map(full.data, filter_out_loss) 
@@ -298,6 +302,11 @@ subset.df$name = rep(trial.dirs, sapply(subset.data, nrow))
 
 subset.df %>%
   filter(antigentype != 0) -> subset.analyze
+
+subset.analyze %>%
+  group_by(success) %>%
+  
+
 
 ####### Step 4: Create Meta Data for these 
 #meta.data = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_emerge(trial)) %>%
@@ -313,6 +322,9 @@ subset.df %>%
 ######### Step 4 - Calculate Entropy
 entropy = map(antigen.frequencies, calculate_entropy)
 names(entropy) = trial.dirs
+
+
+
 
 ####### Step 5: Create Meta Data at different time points
 freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
@@ -363,8 +375,8 @@ freq.df.subset %>%
   mutate_at("name", as.factor) -> diff.df
 
 diff.df %>%
-  select(-first.gp) %>%
-  spread(key = variable, value = second.gp) -> growth.2.subset
+  select(-second.gp) %>%
+  spread(key = variable, value = first.gp) -> growth.1.subset
 
 ################ Step 9: Calculate Acceleration
 diff.df %>%
@@ -373,7 +385,6 @@ diff.df %>%
 diff.df %>%
   select(-first.gp, -second.gp) %>%
   spread(key = variable, value = accelerate) -> accelerate
-head(accelerate)
 
 
  
