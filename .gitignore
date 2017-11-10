@@ -20,3 +20,17 @@ out.*
 *.Rhistory
 
 *.docx
+*.csv 
+*.xslx
+
+results/accel.diff_dayin.1104.csv
+
+results/accel.diff_dayout.1104.csv
+
+results/antigen.5.csv
+
+*.csv
+
+*.xlsx
+
+results/november.results.rtf
