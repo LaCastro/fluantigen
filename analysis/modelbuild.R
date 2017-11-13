@@ -24,17 +24,17 @@ ratio.fitness = c("ratio.mutation", "ratio.meanR", "ratio.varR", "ratio.meanBeta
 freq.df.subset %>%
   filter(freq == "freq.01") -> freq.1.subset
 
-data = accelerate
+data = freq.3.subset
 
 data  <- within(data, {
   success <- factor(success) #, levels=c("Est.", "Transient"))
   name <- as.factor(name)
-#  freq <- as.factor(freq)
+  freq <- as.factor(freq)
   antigentype <- as.factor(antigentype)
 })
 
 #dataScaled = data %>% select(success, name, antigentype) # Snap shot 
-dataScaled = data %>% select(-simDay,-totalI, -netau) # Growth Difference 
+dataScaled = data %>% select(-simDay,-totalI, -netau, -freq, -day) # Growth Difference 
 
 #dataScaled$netau[is.infinite(dataScaled$netau)] <- NA
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
@@ -45,15 +45,15 @@ trial.all <- glmer(success ~.-name-antigentype + (1| name), data = dataScaled, f
                    control = glmerControl(optimizer="bobyqa"),nAGQ=0)
 vif.results = data.frame(vif.mer(trial.all))
 # Snap Shot 
+vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
+                                  "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
+                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
+                 "ratio.meanBeta","antigenicTypes", "totalI", "day")
+# Growth Differences 
 #vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
 #                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
 #                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
-#                 "ratio.meanBeta","antigenicTypes", "totalI", "day")
-# Growth Differences 
-vif.excluded = c("individual.meanMut", "individual.meanBeta", "individual.varR",
-                 "individual.varMut", "totalS", "meanSigma", "varSigma" , "individual.meanR",
-                 "meanR", "ratio.meanSigma", "individual.varBeta", "meanLoad", "ratio.varBeta",
-                 "ratio.meanBeta","totalI")
+#                 "ratio.meanBeta","totalI")
 
 #dataPurged = dataScaled
 
@@ -67,23 +67,23 @@ colnames(dataScaled)[which(!colnames(dataScaled) %in% colnames(dataPurged))]
 
 ################# Combing multiple time point data sets 
 factor.variables = which(sapply(dataPurged,is.factor)==TRUE)
-colnames(dataPurged)[-factor.variables] = paste0("accel.", colnames(dataPurged)[-factor.variables])
+colnames(dataPurged)[-factor.variables] = paste0("freq.3.", colnames(dataPurged)[-factor.variables])
 
 freq.1 = dataPurged
+freq.2 = dataPurged
 freq.3 = dataPurged
-freq.5 = dataPurged
 diff.1 = dataPurged
 diff.2 = dataPurged
 accel = dataPurged
 
 freq.1 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.1.l
 freq.3 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.3.l
-freq.5 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.5.l
+freq.2 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.2.l
 diff.2 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> dataPurged.2
 diff.1 %>% gather(key = variable, value = value, -success, -name, -antigentype)  -> dataPurged.1
 accel %>% gather(key = variable, value = value, -success, -name, -antigentype) -> accel.l
 
-the.whole.data = bind_rows(freq.1.l, freq.3.l, freq.5.l, dataPurged.1, dataPurged.2, accel.l) %>%
+the.whole.data = bind_rows(freq.1.l, freq.2.l, freq.3.l, dataPurged.1, dataPurged.2, accel.l) %>%
   spread(key = variable, value = value) %>% 
   select(-antigentype)
 
@@ -91,18 +91,24 @@ trial.multiple <- lme4::glmer(success ~.-name + (1 | name), data = the.whole.dat
                             control = glmerControl(optimizer="bobyqa"),nAGQ=0)
 vif.results = data.frame(vif.mer(trial.multiple))
 
-vif.excluded = c("freq.1individual.varSigma", "freq.5individual.varSigma", "freq.3meanBeta", "freq.5meanBeta",
-                 "freq.3antigenicDiversity", "freq.3diversity", "freq.3individual.meanSigma", "freq.3entropy", 
-                 "freq.3dominant.freq", "freq.3infected", "freq.3varBeta", "freq.3covBetaSigma", "freq.3ratio.mutation",
-                 "freq.5antigenicDiversity", "freq.5diversity", "freq.1individual.meanSigma", "gp.1antigenicTypes", 
-                 "freq.3ratio.meanR", "gp.1individual.meanSigma", "freq.1entropy", "freq.3tmrca", "freq.5individual.meanSigma",
-                 "freq.1covBetaSigma", "freq.5covBetaSigma", "freq.5dominant.freq", "gp.1dominant.freq", "freq.3varR")
+#vif.excluded = c("freq.2.individual.meanSigma", "freq.2.meanBeta", "freq.2.covBetaSigma", "freq.2.individual.varSigma", "freq.1.individual.meanSigma",
+#                 "freq.2.varR", "freq3.individual.varSigma", "freq.1.covBetaSigma", "freq.2.antigenicDiversity", "freq.2.diversity", "freq.3.meanLoad",
+#                 "freq.2.entropy", "freq.2.ratio.mutation", "freq.2.dominant.freq", "freq.3.antigenicDiversity", "freq.2.infected", "freq.3.diversity",
+#                 "freq.2.varBeta", "freq.2.ratio.varR", "freq.3.entropy", "gp.1.ratio.varR", "gp.2.ratio.varR", "freq.2.ratio.meanR", "freq.3.ratio.mutation",
+#                 "freq.3.dominant.freq", "freq.2.tmrca", "freq.3.infected", "gp.1.infected", "gp.1.individual.meanSigma", "freq.2.ratio.varSigma", "freq.1.varBeta",
+#                 "gp.1.antigenicTypes", "freq.1.ratio.mutation")
+vif.excluded = c("freq.1.individual.varSigma", "freq.3.individual.varSigma", "freq.2.meanBeta", "freq.2.antigenicDiversity", "freq.3.meanBeta", 
+                 "freq.2.diversity", "freq.2.individual.meanSigma", "freq.2.individual.meanSigma","freq.2.entropy", "freq.2.dominant.freq",
+                 "freq.3.antigenicDiversity", "freq.3.diversity", "freq.2.varBeta", "freq.2.infected", "freq.2.ratio.mutation", "freq.2.covBetaSigma", 
+                 "freq.2.covBetaSigma", "freq.1.individual.meanSigma", "freq.1.entropy", "freq.1.entropy", "freq.2.ratio.meanR", "freq.2.ratio.meanR",
+                 "freq.3.dominant.freq", "freq.2.tmrca", "freq.3.varBeta", "freq.3.infected", "gp.1.infected", "gp.1.individual.meanSigma",
+                 "freq.1.covBetaSigma", "freq.2.ratio.varSigma", "freq.2.varR", "gp.1.antigenicTypes", "freq.1.ratio.mutation", "freq.3.covBetaSigma")
+
+
 the.whole.data.purged = the.whole.data[,-which(colnames(the.whole.data) %in% vif.excluded)]
 trial.purged <- lme4::glmer(success ~.-name + (1 | name), data = the.whole.data.purged, family = binomial,
                             control = glmerControl(optimizer="bobyqa"),nAGQ=0)
 vif.results = data.frame(vif.mer(trial.purged))
-
-
 dataPurged = the.whole.data.purged
 
 included.variables = rownames(vif.results)

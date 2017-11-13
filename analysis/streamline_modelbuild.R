@@ -152,10 +152,15 @@ interaction.term.results = bind_cols(variable = int.list, per =  int.per, aic = 
 full.model = rbind(single.term.results , interaction.term.results)
 full.model.results = full_join(full.model, coefficient.estimates, by = c("variable" = "term"))
 full.model.results
-write.csv(full.model.results, '../results/full.model.csv')
+write.csv(full.model.results, '../results/transient.03.csv')
 
 calculate_SenSpec(glmer.probs, testdata)
 
+trans.03 = data.frame(cbind(sen = glmer.ROC$sensitivities,
+                            spec = glmer.ROC$specificities,
+                            thres = glmer.ROC$thresholds))
+
+write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/roc.trans.03.csv")
 
 ################################ Looking at ROC 
 
