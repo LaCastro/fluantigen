@@ -189,7 +189,7 @@ replace_na_zeros = function(x) {
 determine_success_labels = function(x) {
   x %>%
     mutate(success = ifelse(days > 45, "Est.", 
-                            ifelse(final.max > .05, "Transient", "no")))
+                            ifelse(final.max > .03, "Transient", "no")))
 }
 filter_out_loss = function(x) {
   x %>%
@@ -236,10 +236,6 @@ clean_gathered_data = function(entry) {
     return(entry)
   }
 }
-
-
-###########
-
 calculate_ratios = function(data.set) {  
   data.set %>%
     mutate(ratio.mutation = individual.meanMut/meanLoad,
@@ -265,8 +261,11 @@ calculate_entropy = function(antigen.frequency) {
 
 
 
+###########
+
+
+
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
-tropics.folder = "../data/tropics_30/eligible/"
 tropics.folder = "../data/tropics/eligible/"
 trial.dirs = dir(tropics.folder)
 
@@ -321,7 +320,7 @@ freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) 
 freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
 freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
 
-freq.list = list(freq.one, freq.two, freq.three, freq.four, freq.five) 
+freq.list = list(freq.one, freq.two, freq.three)
 
 ######## Step 6: Remove extra rows 
 freq.list = map(freq.list, remove_columns)
@@ -331,13 +330,13 @@ freq.list.ratio = map(freq.list, calculate_ratios)
 
 ###### Step 8: Calculate Difference Data Sets 
 freq.df =  do.call("rbind", freq.list.ratio)
-freq.df$freq = rep(c("freq.01", "freq.02", "freq.03", "freq.04", "freq.05"), sapply(freq.list.ratio, nrow))
+freq.df$freq = rep(c("freq.01", "freq.02", "freq.03"), sapply(freq.list.ratio, nrow))
 
 #### Step 8.5 - remove those that span  the burn in period 
 freq.df %>%
   group_by(antigentype, name) %>%
   filter(day == 1833) %>%
-  summarize(antigen.to.exclude = unique(antigentype))%>%
+  summarize(antigen.to.exclude = unique(antigentype)) %>%
   mutate(.id = paste0(name, "_", antigen.to.exclude)) -> not.full.dataset
 
 freq.df %>%
@@ -356,15 +355,15 @@ freq.df.subset %>%
   gather(key = variable, value = value, -freq,-antigentype,-success,-name) %>%
   arrange(antigentype) %>%
   group_by(name, antigentype, variable) %>%
-  summarize(first.gp = calculate_growth_phase(value, phase1 = 1, phase2 = 3),
-            second.gp = calculate_growth_phase(value, phase1 = 3, phase2 = 5),
+  summarize(first.gp = calculate_growth_phase(value, phase1 = 1, phase2 = 2),
+            second.gp = calculate_growth_phase(value, phase1 = 2, phase2 = 3),
             success = success[1]) %>%
   ungroup() %>%
   mutate_at("name", as.factor) -> diff.df
 
 diff.df %>%
-  select(-first.gp) %>%
-  spread(key = variable, value = second.gp) -> growth.2.subset
+  select(-second.gp) %>%
+  spread(key = variable, value = first.gp) -> growth.1.subset
 
 ################ Step 9: Calculate Acceleration
 diff.df %>%
@@ -373,7 +372,6 @@ diff.df %>%
 diff.df %>%
   select(-first.gp, -second.gp) %>%
   spread(key = variable, value = accelerate) -> accelerate
-head(accelerate)
 
 
  

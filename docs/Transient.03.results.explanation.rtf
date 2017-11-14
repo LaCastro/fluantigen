@@ -1,0 +1,195 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf830
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\csgenericrgb\c0\c0\c0;}
+\margl1440\margr1440\vieww18700\viewh19800\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Looking at Transient 03% \
+\
+	This allows for the difference metrics (don\'92t think it\'92s meaningful) at just 1% \
+	Comparing to my 5% model, you get similar metrics (measuring relative fitness) \'97 entropy shows up as the 5th most important in both\
+		*Day shows up more quickly in the 5% but the number of infected is further behind \
+\
+	In the 5th model \'97 ratio mutation switches signs between the 5% and the 1% \
+Top 5 Metrics \
+\
+(1,2) Ratio of the meanR is the top metric in two different ways \'97 the absolute value at 3% and how it changed between 2-3%. \
+	* The effect changes between the two. An increase in the ratio helps the the probability, but a bigger difference in the ratio decreases the probability\
+\
+(3)  The variance has a negative impact\
+\
+(4) An increase in the mutation ratio (deleterious load) decreases the probability\
+\
+(5) An increase in entropy decreases the probability \
+\
+\
+\
+\
+#################### What I need to do is make plots of  the visualized dynamics \
+	These should be scaled/center? \
+\
+\
+\ul Ratio meanR \ulnone 	\
+The ratio mean R starts high and decreases as the antigen type becomes more prevalent \'97 Those that are successful seem to have higher starting ratios and the spread becomes more prominent. \
+\
+\
+\ul Ratio meanR EGP \
+\ulnone * A bigger increase would indicate a faster dropping off , so you\'92re going from a high ratio to a smaller ratio \
+	* maybe want to look at this \'97 (is the slope of decline faster in transient) \
+\
+\'97\'97 The second growth phase is more significant than the first \
+\
+\
+\ul Var.R (3%)\ulnone \
+* Variance increases when there are more types present ( this happens in the trough) \
+* A higher variance indicates a lower probability of success  \'97 higher variances occur during the \
+* if it\'92s competing with many different types early on - lower probability? \'97\'97\
+\
+\
+\ul Ratio Mutation\
+\ulnone **** Seems like at the beginning the ratio should stay steady but eventually it increase (not at the very beginning) \
+**** Might need to look at this one more closely \
+** The sign suggests that an increase in mutation mean\'92s its more likely to be less successful \'97 which makes sense \'97 this would hamper it\'92s ability to spread\
+** By 3% \'97 the mean of the transient ratio is above 1 \
+\
+\
+\
+\ul Entropy - EGP \ulnone \
+\
+** Entropy hits it\'92s low point when the number of infected individuals is peaking \
+** how low it goes might depend on whether there are a lot of different types or not \'97 yes this is true.  If the dominant peak is occupied by only one or a few, the entropy drops lower than if several antigen types make up the peak\
+** hits it\'92s peak when the infected individuals are in trough phase \
+\
+Now in terms of change\
+	* see bigger changes during the rise and fall (are they going from a low entropy - high entropy?\
+\
+	If you\'92re on the down of entropy so that your sign would be negative ( a lower entropy - a higher entropy) this is when population is actually increasing\
+	If you\'92re on the up of entropy ( so that you\'92re sign is positive) You are on the up \
+\
+	
+\b Look at entropy separate between positive and negative signs and look at success \'97 regardless of sign, you want to see the smallest decrease in entropy \
+
+\b0 \
+\ul Ratio.varR \'97\'97 NOT SURE WHY THIS IS \ulnone \
+* A high ratio of varR would indicate that there is more variance within an antigenic type than within the population\
+* The sign suggests that this would help the antigen, although if you look at box plots it seems to be the opposite? \ul \
+* the ratio of the variance is solidly below that of the entire population\
+\
+\
+\
+\
+
+\b \ulnone Need Visual 
+\b0 \ul \
+\
+Ratio.varSigma\
+\ulnone * A high ratio of varSigma would be that there\'92s a higher ratio of people who are either super susceptibility or immune to the single antigen versus the whole circulating population at large \
+\
+\
+*var Sigma in general is highest when you are in the peak of the infected dynamics \'97 where you have some people who are fully immunized and others that are susceptible\
+* If the ratio is higher in the individual antigen \'97 this will be \ul \
+
+\b \
+\
+
+\b0 ** They look to be almost exactly the same when just looking at a box plot \
+
+\b \
+\
+\cf2 \ulnone Need better visual\cf0 \ul \ulc0 \
+
+\b0 \
+Infected\
+\
+\ulnone * Want fewer people infected earlier on \'97 seems easier to overcome, also agrees with fewer is better \
+\ul \
+Day-EGP \
+\ulnone * A larger time gap indicates a slower growth - transient\'97makes sense\
+\ul \
+\
+Ratio.Mutation \'97EGP (1) \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\b \cf0 \ulnone NEED BETTER VISUAL 
+\b0 \ul \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \ulnone \
+* a negative - you don\'92t want to change as much because that means you\'92re accumulating more deleterious mutations\
+\
+\ul Ratio.Mutation \'97Accel\
+\
+\ulnone * a negative - you don\'92t want to change as much because that means you\'92re accumulating more deleterious mutations\
+\ul \
+\
+\
+ratio.varR EGP \
+\
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\b \cf0 \ulnone NEED BETTER VISUAL 
+\b0 \ul \
+\
+\
+Individual.varSigma\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \ulnone * this is a positive \
+* An increase in the variance would suggest that more people are being infected \
+\ul \
+\
+Day: Accel\
+\ulnone *an increase in the difference would suggest its increasing faster\
+\
+If EGP 1 = 50 days, and EGP2 = 50 days, 0 difference\
+if EGP 1 = 50 days, and EGP2 = 25 days, there\'92s a 25 day difference suggesting it\'92s growing faster \
+The value is lower because you want a negative difference\
+(25-50) \
+\
+\ul \
+Diversity \
+\ulnone * Has a slightly positive impact \'97\
+* Diversity peaks during the troughs \'97 so indicating a stronger trough is better \
+\ul \
+\
+Antigenic Diversity\
+** A negative effect\
+**  Antigenic Diversity (number of different circulating) actually peaks during the troughs as more antigens are created \
+\
+\
+\
+VarR: EGP 2\
+ \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\b \cf0 \ulnone NEED BETTER VISUAL \
+\
+\
+\
+\
+\
+\
+\
+\
+\
+TOP 5 Variables \
+\
+** 
+\b0 If the ratio.meanR is lower (already closer to the population mean) , it needs a slower decrease in it\'92s advantage than if it has a higher R0 \
+\
+** Don\'92t see a super strong interaction between ratio.meanR 3% and varR 3% \'97 maybe that for a given meanR ratio, if the variance in R at that time is greater, it has a high probability of being successful \'97 at lower meanRs, a lower Variancce will help it become successful \
+	* as the meanR becomes higher seems like it has less of an effect\
+\
+\
+** Ratio.meanR to ratio.mutation \
+In general you see an increase in probability the lower the mutation ratio is (is carrying fewer deleterious mutations)\
+This effect is seen more strongly for ratios that are lower, and then seems to have less of an effect as the ratio of the meanR gets stronger (can sustain a higher mutation load) \
+\
+\
+** Ratio meanR vs Entropy EGP 2\
+\
+}

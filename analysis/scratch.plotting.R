@@ -4,11 +4,20 @@ source('analysis_functions.R')
 source('plotting_functions.R')
 
 ##################################
-two.d.plot <- function(data.set, variable.1, variable.2, num.bins) {
-  var.1.breaks = round(seq(from = min(data.set[,`variable.1`]),to = max(data.set[,`variable.1`]), length.out = num.bins), digits = 1)
-  var.2.breaks = round(seq(from = min(data.set[,`variable.2`]),to = max(data.set[,`variable.2`]), length.out = num.bins), digits = 1)
+two.d.plot <- function(data.set, variable.1, variable.2, num.bins, digits) {
   
   variables = c(variable.1, variable.2)
+  
+  all.variables %>%
+    filter(id %in%variables) %>%
+    select(success,name,antigentype,id,value) %>%
+    spread(key = id, value = value) -> data.set
+  
+  
+  var.1.breaks = round(seq(from = min(data.set[,`variable.1`]),to = max(data.set[,`variable.1`]), length.out = num.bins), digits = digits)
+  var.2.breaks = round(seq(from = min(data.set[,`variable.2`]),to = max(data.set[,`variable.2`]), length.out = num.bins), digits = digits)
+  
+  
   data.set %>%
     select(success, one_of(variables)) -> data.sub
   
@@ -31,10 +40,10 @@ two.d.plot <- function(data.set, variable.1, variable.2, num.bins) {
 }
 clean.2D.plot <- function(plot, variable.name.1, variable.name.2) { 
   plot + labs(x = variable.name.1, y  = variable.name.2, fill = "Proportion \n Successful") +
-    theme(axis.text = element_text(size =8)) + 
+    theme(axis.text = element_text(size =8), axis.text.x = element_text(angle = 60,  hjust=1),
+          axis.title = element_text(size = 10)) + 
     theme(legend.key.size = unit(0.5, "cm")) +
-    theme(legend.text = element_text(size = 8), legend.title = element_text(size=10))
-  
+    theme(legend.text = element_text(size = 8), legend.title = element_text(size=8)) 
 }
 
 
@@ -257,39 +266,43 @@ roc.lines + geom_hline(data = half.thres, aes(yintercept = sen, color = as.facto
 full.model %>%
   arrange(term) 
 
+freq.df.subset %>%
+  filter(freq == "freq.02") -> freq.2.subset
+
+
 freq.1.subset %>%
   select(success, name,  antigentype, ratio.varSigma, infected, diversity, antigenicDiversity) %>%
-  mutate_if(is.numeric, scale) %>%
+#  mutate_if(is.numeric, scale) %>%
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq1") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.1.variables
 freq.2.subset %>%
   select(success, name, antigentype, ratio.varR, individual.varSigma) %>%
-  mutate_if(is.numeric, scale) %>% 
+#  mutate_if(is.numeric, scale) %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq2") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.2.variables
 freq.3.subset %>%
   select(success, name, antigentype, ratio.meanR, varR, ratio.mutation) %>%
-  mutate_if(is.numeric, scale)  %>% 
+#  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq3") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.3.variables
 growth.1.subset %>%
   select(success, name, antigentype, ratio.meanR, ratio.mutation) %>%
-  mutate_if(is.numeric, scale)  %>% 
+#  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.1") %>%
   mutate(id = paste0(variable, "_", time.point)) -> gp.1.variables
 growth.2.subset %>%
   select(success, name, antigentype,ratio.meanR, entropy, day, ratio.varR, varR) %>%
-  mutate_if(is.numeric, scale)  %>% 
+#  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.2") %>%
   mutate(id = paste0(variable, "_", time.point)) -> gp.2.variables
 accelerate %>%
   select(success,name, antigentype, ratio.mutation, day) %>%
-  mutate_if(is.numeric, scale)   %>% 
+#  mutate_if(is.numeric, scale)   %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "accel") %>%
   mutate(id = paste0(variable, "_", time.point)) -> accel.variables
@@ -302,8 +315,8 @@ all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "rat
                                                        "entropy_gp.2", "ratio.varR_freq2", "ratio.meanR_gp.1", "ratio.varSigma_freq1",
                                                        "infected_freq1", "day_gp.2", "ratio.mutation_gp.1", "ratio.mutation_accel", 
                                                        "ratio.varR_gp.2", "individual.varSigma_freq2", "day_accel", "diversity_freq1", 
-                                                       "antigenicDiversity_freq1", "varR_gp.2"),
-                          labels = c("ratio.meanR: 5%", "varR: 5%", "ratio.meanR: EGP 2", "ratio.mutation: 5%",
+                                                       "antigenicDiversity_freq1", "varR_gp.2"))
+                         # labels = c("ratio.meanR: 5%", "varR: 5%", "ratio.meanR: EGP 2", "ratio.mutation: 5%",
                                      "entropy: EGP 2", "day EGP 2", "ratio.varR: 5%", "individual.varSigma: 3%", "ratio.meanR: Diff EGP",
                                      "ratio.mutation: 1%", "infected: 1%", "ratio.varSigma: 1%", "varR: EGP 2", "varBeta: EGP 2", "tmrca: 5%",
                                      "day: Diff EGP"))
@@ -364,19 +377,19 @@ variable.1 = "freq.3.ratio.mutation"
 variable.2 = "gp.2.ratio.varR"
 data.set = dataPurged
 
-plot.1 = two.d.plot(data.set = dataPurged, variable.1 = "freq.1.diversity", variable.2 = "gp.2.varR", num.bins = 10)
+plot.1 = two.d.plot(data.set = dataPurged, variable.1 = "diversity_freq1", variable.2 = "varR_gp.2", num.bins = 15, digits = 4)
 int.1 = clean.2D.plot(plot.1, variable.name.1="Diversity: 1%", variable.name.2 = "Ratio.varR: EGP 2")
 
-plot.2 = two.d.plot(data.set = dataPurged, variable.1 = "gp.1.ratio.meanR", variable.2 = "gp.2.day", num.bins = 15)
+plot.2 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_gp.1", variable.2 = "day_gp.2", num.bins = 15, digits = 4)
 int.2 = clean.2D.plot(plot.2, variable.name.1="Ratio Mutation: EGP 1", variable.name.2 = "Day: EGP 2")
 
-plot.3 = two.d.plot(data.set = dataPurged, variable.1 = "gp.2.day", variable.2 = "freq.3.ratio.meanR", num.bins = 20)
+plot.3 = two.d.plot(data.set = dataPurged, variable.1 = "day_gp.2", variable.2 = "ratio.meanR_freq3", num.bins = 20, digits = 2)
 int.3 = clean.2D.plot(plot.3, variable.name.1="Day: EGP 2", variable.name.2 = "Ratio.meanR: 3%")
 
-plot.4 = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.mutation", variable.2 = "freq.2.ratio.varR", num.bins = 15)
+plot.4 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_freq2", num.bins = 15, digits = 3)
 int.4 = clean.2D.plot(plot.4, variable.name.1 = "Ratio.mutation: 3%", variable.name.2 = "ratio.varR: 2%")
 
-plot.5 = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.mutation", variable.2 = "gp.2.ratio.varR", num.bins = 15)
+plot.5 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_gp.2", num.bins = 15, digits = 4)
 int.5 = clean.2D.plot(plot.5, variable.name.1 = "Ratio.mutation: 3%", variable.name.2 = "ratio.varR: EGP 2")
 
 int.plots = cowplot::plot_grid(int.1, int.2, int.3, int.4, int.5, labels = "AUTO")
@@ -384,29 +397,45 @@ cowplot::save_plot(int.plots, filename = "exploratory.figs/int.plots.pdf",
                    base_height = 8, base_aspect_ratio = 1.9)
 
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.meanR", variable.2 = "gp.2.ratio.meanR", num.bins = 15)
+variable.1 = 
+variable.2 = 
+
+
+top.variables = two.d.plot(data.set = all.variables, variable.1 = "ratio.meanR_freq3", variable.2 = "ratio.meanR_gp.2", num.bins = 15, digits = 3)
 top.5.plot.1 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Ratio.meanR EGP 2")
 
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.meanR", variable.2 = "freq.3.varR", num.bins = 15)
+top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "varR_freq3", num.bins = 15, digits = 5)
 top.5.plot.2 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "VarR: 3%")
 
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.meanR", variable.2 = "freq.3.ratio.mutation", num.bins = 15)
+top.variables = two.d.plot(data.set = dataPurged, variable.1 =  "ratio.meanR_freq3", variable.2 = "ratio.mutation_freq3", num.bins = 15, digits = 3)
 top.5.plot.3 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Ratio.mutation: 3%")
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.meanR", variable.2 = "gp.2.entropy", num.bins = 15)
+top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "entropy_gp.2", num.bins = 15, digits = 4)
 top.5.plot.4 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Entropy: EGP 2")
 
 
 top.5.variables = cowplot::plot_grid(top.5.plot.1, top.5.plot.2, top.5.plot.3, top.5.plot.4)
+
 cowplot::save_plot(top.5.variables, filename = "exploratory.figs/top.5.variables.pdf", base_height = 8,
                    base_aspect_ratio = 1.8)
 
-
 top.5.variables = cowplot::plot_grid(top.5.plot.1, top.5.plot.2, top.5.plot.3, top.5.plot.4)
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "freq.3.ratio.meanR", variable.2 = "freq.1.infected", num.bins = 15)
-top.5.plot.4 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Infected: 1%")
 
-dataPurged %>% 
-  ggplot(aes(x = freq.3.ratio.meanR, y = freq.1.infected, color = success)) + geom_point()
+
+
+sample.plot = two.d.plot(data.set = dataPurged, variable.1 = "varR_freq3", variable.2 = "infected_freq1", num.bins = 15, digits = 5)
+prob.plot = clean.2D.plot(sample.plot, variable.name.1 = "varR: 3%", variable.name.2 = "Infected: 3%")
+
+variable.compare = c("varR_freq3","infected_freq1")
+
+all.variables %>%
+  filter(id %in% variable.compare) %>%
+  select(-time.point,-variable) %>%
+  spread(key = id, value = value) %>%
+  ggplot(aes(x = varR_freq3, y = infected_freq1, color = success)) + geom_point() +
+  scale_color_manual(values = c("black", "grey"))  +
+  labs(x = "VarR: 3%", y  = "Infected: 1%") -> boxplot.compare
+ 
+plot_grid(prob.plot, boxplot.compare)
