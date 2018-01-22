@@ -147,24 +147,13 @@ while(build == TRUE) {
   }
 }
 interaction.term.results = bind_cols(variable = int.list, per =  int.per, aic = int.aic)
-
-
 full.model = rbind(single.term.results , interaction.term.results)
 full.model.results = full_join(full.model, coefficient.estimates, by = c("variable" = "term"))
-full.model.results
-write.csv(full.model.results, '../results/transient.03.csv')
 
-calculate_SenSpec(glmer.probs, testdata)
+write.csv(full.model.results, '../results/transient.03poplevel.csv')
 
-trans.03 = data.frame(cbind(sen = glmer.ROC$sensitivities,
-                            spec = glmer.ROC$specificities,
-                            thres = glmer.ROC$thresholds))
-
-write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/roc.trans.03.csv")
 
 ################################ Looking at ROC 
-
-
 calculate_SenSpec <- function(model.probs, testdata) {
   performance.data = data.frame(cbind(glmer.probs, truth=testdata$success))
   performance.data %>%
@@ -174,15 +163,20 @@ calculate_SenSpec <- function(model.probs, testdata) {
   tnr =  specificity(data.table, negative = "1")
   return(c(sen = tpr, spec = tnr))
 }
+calculate_SenSpec(glmer.probs, testdata)
+
+
+#####################
+trans.pop3 = data.frame(cbind(sen = glmer.ROC$sensitivities,
+                              spec = glmer.ROC$specificities,
+                              thres = glmer.ROC$thresholds))
+write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/roc.transpop.csv")
+
+
 
 roc.data = data.frame(cbind(thres = glmer.ROC$thresholds,
                             sen = glmer.ROC$sensitivities,
                             spec = glmer.ROC$specificities))
-
-roc.data %>% 
-  filter(thres > .48) %>% 
-  arrange(thres) 
-
 
 ### Need to get estimates 
 plot_pred_type_distribution <- function(df, threshold) {

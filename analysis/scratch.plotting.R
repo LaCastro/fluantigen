@@ -1,4 +1,5 @@
 rm(list=ls())
+library(viridis)
 source('loadLibraries.R')
 source('analysis_functions.R')
 source('plotting_functions.R')
@@ -38,12 +39,16 @@ two.d.plot <- function(data.set, variable.1, variable.2, num.bins, digits) {
     scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
     scale_fill_viridis(option="plasma")
 }
-clean.2D.plot <- function(plot, variable.name.1, variable.name.2) { 
-  plot + labs(x = variable.name.1, y  = variable.name.2, fill = "Proportion \n Successful") +
-    theme(axis.text = element_text(size =8), axis.text.x = element_text(angle = 60,  hjust=1),
-          axis.title = element_text(size = 10)) + 
-    theme(legend.key.size = unit(0.5, "cm")) +
-    theme(legend.text = element_text(size = 8), legend.title = element_text(size=8)) 
+clean.2D.plot <- function(plot, variable.name.1, variable.name.2, guide = TRUE) { 
+  step1 = plot + labs(x = variable.name.1, y  = variable.name.2, fill = "Persistent \n Antigens \n") +
+    theme(axis.text = element_text(size =14), axis.text.x = element_text(angle = 60,  hjust=1),
+          axis.title = element_text(size = 16)) + 
+    theme(legend.key.size = unit(0.7, "cm")) + theme(legend.text = element_text(size = 14), 
+                                                     legend.title = element_text(size=14))
+  if(guide == FALSE) {
+    step1 + guides(fill = FALSE)
+  }
+  step1
 }
 
 
@@ -54,7 +59,6 @@ model.performance$model <- factor(model.performance$model, levels = c("freq.1", 
                                                                       "full.data", "antigen.5", "antigen.full",
                                                                       "population.5", "population.full", "ratio.5",
                                                                       "ratio.full", "viral.fitness.5", "viralFitness.full"))
-
 levels(model.performance$model.type) = c("All Variables", "Variable Set")
 myColors = colorRampPalette(brewer.pal(8, "Accent"))(nrow(model.performance))
 model.performance %>% ggplot(aes(sen, spec)) + geom_point(aes(fill = model), size = 3, colour = "black", pch=21) +
@@ -70,7 +74,6 @@ model.performance %>% ggplot(aes(sen, spec)) + geom_point(aes(fill = model), siz
                                                    "Population variables: all time", "Relative fitness variables: 5%",
                                                    "Relative fitness variables: all time", "Viral pop. variables: 5%", 
                                                    "Viral pop.variables: all time")) -> model.precision
-model.precision
 save_plot("exploratory.figs/logistic_regressions/model.precision.pdf", model.precision, base_height = 6, base_aspect_ratio = 1.8)
 
 
@@ -95,7 +98,6 @@ variable.type.order = c("relative.fitness", "antigen.level", "population.level",
 prop.included$variable <- factor(prop.included$variable, levels = variable.order)  
 variable.colors = brewer.pal(n = length(unique(prop.included$variable.type)), name = "Paired")
 prop.included$variable.type = factor(prop.included$variable.type, levels = variable.type.order)  
-
 
 ggplot(prop.included, aes(x = variable, y = freq)) + geom_col(aes(fill = variable.type)) + 
   geom_text(aes(label = total.opp)) + 
@@ -316,10 +318,10 @@ all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "rat
                                                        "infected_freq1", "day_gp.2", "ratio.mutation_gp.1", "ratio.mutation_accel", 
                                                        "ratio.varR_gp.2", "individual.varSigma_freq2", "day_accel", "diversity_freq1", 
                                                        "antigenicDiversity_freq1", "varR_gp.2"))
-                         # labels = c("ratio.meanR: 5%", "varR: 5%", "ratio.meanR: EGP 2", "ratio.mutation: 5%",
-                                     "entropy: EGP 2", "day EGP 2", "ratio.varR: 5%", "individual.varSigma: 3%", "ratio.meanR: Diff EGP",
-                                     "ratio.mutation: 1%", "infected: 1%", "ratio.varSigma: 1%", "varR: EGP 2", "varBeta: EGP 2", "tmrca: 5%",
-                                     "day: Diff EGP"))
+                          labels = c("ratio.meanR: 3%", "ratio.meanR: EGP 2", "varR: 3%", "ratio.mutation: 3%",
+                                     "entropy: EGP 2", "ratio.varR: 2%", "ratio.meanR: EGP 1", "ratio.varSigma: 1%", "infected: 1%", 
+                                     "day: EGP 2", "ratio.mutation: EGP 1", "ratio.mutation: Diff EGP", "ratio.varR: EGP 2", "individual.varSigma: 2%",
+                                     "day: Diff EGP", "diversity: 1%", "antigenicDiversity: 1%", "varR: EGP 2")
 all.variables %>% 
   ggplot(aes(id, value, color = success)) + geom_boxplot() +
   scale_y_log10() + 
@@ -334,7 +336,6 @@ transient.03 %>%
 
 single.03 %>%
   mutate(id = paste0(variable1, "_", time.1)) -> single.03
-head(single.03)
 single.03$id = factor(single.03$id, levels = c("ratio.meanR_freq.3", "ratio.meanR_gp.2",  "varR_freq.3", "ratio.mutation_freq.3",  "entropy_gp.2",
                                                  "ratio.varR_freq.2",  "ratio.meanR_gp.1" , "ratio.varSigma_freq.1", "infected_freq.1", "day_gp.2" ,
                                                  "ratio.mutation_gp.1",  "ratio.mutation_accel", "ratio.varR_gp.2",  "individual.varSigma_freq.2", 
@@ -375,21 +376,21 @@ sjp.int(model.null, type = "eff")
 ############################# 2D Plots 
 variable.1 = "freq.3.ratio.mutation"
 variable.2 = "gp.2.ratio.varR"
-data.set = dataPurged
+all.variables
 
-plot.1 = two.d.plot(data.set = dataPurged, variable.1 = "diversity_freq1", variable.2 = "varR_gp.2", num.bins = 15, digits = 4)
+plot.1 = two.d.plot(data.set = all.variables, variable.1 = "diversity_freq1", variable.2 = "varR_gp.2", num.bins = 15, digits = 4)
 int.1 = clean.2D.plot(plot.1, variable.name.1="Diversity: 1%", variable.name.2 = "Ratio.varR: EGP 2")
 
-plot.2 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_gp.1", variable.2 = "day_gp.2", num.bins = 15, digits = 4)
+plot.2 = two.d.plot(data.set = all.variables, variable.1 = "ratio.meanR_gp.1", variable.2 = "day_gp.2", num.bins = 15, digits = 4)
 int.2 = clean.2D.plot(plot.2, variable.name.1="Ratio Mutation: EGP 1", variable.name.2 = "Day: EGP 2")
 
-plot.3 = two.d.plot(data.set = dataPurged, variable.1 = "day_gp.2", variable.2 = "ratio.meanR_freq3", num.bins = 20, digits = 2)
+plot.3 = two.d.plot(data.set = all.variables, variable.1 = "day_gp.2", variable.2 = "ratio.meanR_freq3", num.bins = 20, digits = 2)
 int.3 = clean.2D.plot(plot.3, variable.name.1="Day: EGP 2", variable.name.2 = "Ratio.meanR: 3%")
 
-plot.4 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_freq2", num.bins = 15, digits = 3)
+plot.4 = two.d.plot(data.set = all.variables, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_freq2", num.bins = 15, digits = 3)
 int.4 = clean.2D.plot(plot.4, variable.name.1 = "Ratio.mutation: 3%", variable.name.2 = "ratio.varR: 2%")
 
-plot.5 = two.d.plot(data.set = dataPurged, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_gp.2", num.bins = 15, digits = 4)
+plot.5 = two.d.plot(data.set = all.variables, variable.1 = "ratio.mutation_freq3", variable.2 = "ratio.varR_gp.2", num.bins = 15, digits = 4)
 int.5 = clean.2D.plot(plot.5, variable.name.1 = "Ratio.mutation: 3%", variable.name.2 = "ratio.varR: EGP 2")
 
 int.plots = cowplot::plot_grid(int.1, int.2, int.3, int.4, int.5, labels = "AUTO")
@@ -402,26 +403,27 @@ variable.2 =
 
 
 top.variables = two.d.plot(data.set = all.variables, variable.1 = "ratio.meanR_freq3", variable.2 = "ratio.meanR_gp.2", num.bins = 15, digits = 3)
-top.5.plot.1 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Ratio.meanR EGP 2")
+top.5.plot.1 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")), 
+                             variable.name.2 = expression(paste("Chage in ", italic("R"), " Advantage from 2-3%")))
 
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "varR_freq3", num.bins = 15, digits = 5)
-top.5.plot.2 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "VarR: 3%")
+top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "varR_freq3", num.bins = 15, digits = 4)
+top.5.plot.2 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
+                             variable.name.2 = expression(paste("Variance in ", italic("R")," : 3%")))
 
 
 top.variables = two.d.plot(data.set = dataPurged, variable.1 =  "ratio.meanR_freq3", variable.2 = "ratio.mutation_freq3", num.bins = 15, digits = 3)
-top.5.plot.3 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Ratio.mutation: 3%")
+top.5.plot.3 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
+                             variable.name.2 = "Relative Deleterious Mutation Load: 3%")
 
-top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "entropy_gp.2", num.bins = 15, digits = 4)
-top.5.plot.4 = clean.2D.plot(top.variables, variable.name.1 = "Ratio.meanR: 3%", variable.name.2 = "Entropy: EGP 2")
-
+top.variables = two.d.plot(data.set = dataPurged, variable.1 = "ratio.meanR_freq3", variable.2 = "entropy_gp.2", num.bins = 15, digits = 3)
+top.5.plot.4 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
+                             variable.name.2 = "Change in Shannon's Diversity Index from 2-3%")
 
 top.5.variables = cowplot::plot_grid(top.5.plot.1, top.5.plot.2, top.5.plot.3, top.5.plot.4)
 
 cowplot::save_plot(top.5.variables, filename = "exploratory.figs/top.5.variables.pdf", base_height = 8,
-                   base_aspect_ratio = 1.8)
-
-top.5.variables = cowplot::plot_grid(top.5.plot.1, top.5.plot.2, top.5.plot.3, top.5.plot.4)
+                   base_aspect_ratio = 1.3)
 
 
 
@@ -439,3 +441,196 @@ all.variables %>%
   labs(x = "VarR: 3%", y  = "Infected: 1%") -> boxplot.compare
  
 plot_grid(prob.plot, boxplot.compare)
+
+
+############### Difference between ratio.mutation 
+growth.2.subset %>% 
+  select(success, ratio.varR) %>% 
+  #mutate(direction =  ifelse(ratio.varR > 0, "positive", "negative")) %>%
+  ggplot(aes(success, y = ratio.varR, color = success)) + geom_boxplot() + 
+  scale_color_manual(values = c("black", "grey54")) + 
+  labs(x = "Direction", y = "Ratio VarR: EGP 2", color = "Antigen Fate") +
+  scale_x_discrete(labels = c("Decrease", "Increase")) -> ratio.varR.combined
+
+save_plot(filename = "exploratory.figs/entropy.box.plot.pdf", plot = entropy.box.plot)
+
+
+###################  viral Fitness 
+viralType.frequencies = map(trial.dirs, function(x) read.table(paste0(tropics.folder,x,"/out.typeViralFitness.txt"), header = TRUE)) 
+names(antigen.frequencies) = trial.dirs
+
+meanViralFitness = map(trial.dirs, function(x) read.table(paste0(tropics.folder, x, "/out.viralFitnessSeries.txt"), header = TRUE))
+names(meanViralFitness) = trial.dirs
+
+antigen.frequencies[[3]] %>%
+  distinct(day, antigentype, .keep_all = TRUE) %>%
+  spread(key = antigentype, value = frequency, fill = 0) %>%
+  gather(key = antigentype, value = frequency, -day, - infected) %>%
+  mutate_at("antigentype", as.factor) %>%
+  mutate(year = day/365 -5) %>%
+  mutate(prevalence = infected*frequency *.0025) %>%
+  filter(prevalence > 0) %>%
+  ggplot(aes(x = year, y = prevalence, fill = antigentype)) +
+  geom_area(color = "black", aes(color = antigentype, fill = antigentype)) +
+  labs(y = "Infected per 100K", x = "Year")  +
+  scale_x_continuous(breaks = seq(from = 1, to = 25, by =2)) +
+  guides(col = FALSE) + guides(fill = FALSE) -> prev.plot
+
+
+meanViralFitness[[3]] %>%
+  ggplot(aes(x = (day/365)-5, y = meanR)) + geom_line() + 
+  labs(x = "Year") + 
+  scale_x_continuous(breaks = seq(1,25, 2)) -> meanRplot
+
+
+meanRsummary.plot = plot_grid(prev.plot, meanRplot, ncol = 1)
+
+
+freq.df.subset %>%
+  filter(name == "tropics_13") %>%
+  group_by(antigentype) %>%
+  summarize(success = success[1]) -> success.summary
+
+meanViral.pop = meanViralFitness[[3]] %>% select(day, meanR)
+colnames(meanViral.pop)[2] = "pop.meanR"
+
+
+viralType.frequencies[[3]] %>%
+  left_join(meanViral.pop, by = "day") %>%
+  mutate_at("antigenType", as.character) %>%
+  left_join(success.summary, by = c("antigenType" = "antigentype")) %>%
+  filter(!is.na(success)) %>%
+  ggplot(aes(x = (day/365)-5, y = exp(meanR), group = antigenType, color = antigenType)) +  geom_line(size = 1, alpha = .8) +
+  #scale_color_manual(values = c("black", "grey")) +
+  labs(y = "meanR", x = "Year") +
+  scale_x_continuous(breaks = seq(1,25,2)) + facet_wrap(~success) + guides(color = FALSE) + 
+  geom_line(aes(x=(day/365)-5, y = pop.meanR), color = "black") -> individual.meanR.plot
+
+individual.meanR.plot
+
+viralType.frequencies[[3]] %>%
+  mutate_at("antigenType", as.character) %>%
+  left_join(success.summary, by = c("antigenType" = "antigentype")) %>%
+  filter(!is.na(success)) %>%
+  group_by(antigenType) %>%
+  mutate(days.alive = day-day[1]) %>%
+  ggplot(aes(x = days.alive, y = exp(meanR), group = antigenType, color = success)) +  geom_line(size = 1) +
+  scale_color_manual(values = c("black", "grey")) + labs(y = "meanR", x = "Days") +
+  scale_x_continuous(limits = c(0,300), breaks = seq(0,300,50)) +
+  scale_y_continuous(limits = c(0.9, 1.2)) -> meanR.days.alive.plot
+
+
+viralType.frequencies[[3]] %>%
+  mutate_at("antigenType", as.character) %>%
+  left_join(success.summary, by = c("antigenType" = "antigentype")) %>%
+  left_join(meanViral.pop, by = "day") %>%
+  filter(!is.na(success)) %>%
+  group_by(antigenType) %>%
+  mutate(days.alive = day-day[1]) %>%  
+  ggplot(aes(x = days.alive, y = exp(meanR)/pop.meanR, group = antigenType, color = success)) +  geom_line(size = 1) +
+  scale_color_manual(values = c("black", "grey")) + labs(y = "ratio.R", x = "Days") +
+  scale_x_continuous(limits = c(0,300), breaks = seq(0,300,50)) +
+  scale_y_continuous(limits = c(0.9, 1.2)) -> ratio.meanR.days.alive.plot
+
+
+
+
+
+viralType.frequencies[[3]] %>%
+  left_join(meanViral.pop, by = "day") %>%
+  mutate_at("antigenType", as.character) %>%
+  left_join(success.summary, by = c("antigenType" = "antigentype")) %>%
+  filter(!is.na(success)) %>%
+  mutate(ratio.meanR = exp(meanR)/pop.meanR) %>%
+  ggplot(aes(x = (day/365)-5, y = ratio.meanR, group = antigenType, color = antigenType)) +  geom_line(size = 1, alpha = .8) +
+  #scale_color_manual(values = c("black", "grey")) +
+  labs(y = "ratio.meanR", x = "Year") + facet_wrap(~success) + 
+  scale_x_continuous(breaks = seq(1,25,2)) + guides(color = FALSE) + 
+  geom_hline(yintercept = 1, color = "black")-> ratio.mean.plot
+
+
+plot_grid(meanRsummary.plot, individual.meanR.plot, ratio.meanR.days.alive.plot,  ratio.mean.plot)
+
+
+growth.1.subset %>%
+  select(success, ratio.meanR) %>% 
+  mutate(direction = ifelse(ratio.meanR > 0 , "positive", "negative")) %>%
+  ggplot(aes(x = direction, y = ratio.meanR, color = success)) + geom_boxplot() + 
+  scale_color_manual(values = c("black", "grey54"), labels = c("Decrease", "Increase")) +
+  labs(x = "Direction", y = "Change in Ratio.meanR") -> boxplot.meanR
+
+
+
+freq.df.subset %>% filter(freq == "freq.03") -> freq.3.subset
+
+focus.data = as.data.frame(cbind(success = freq.3.subset$success, ratio.meanR = freq.3.subset$ratio.meanR, egp2 = growth.2.subset$ratio.meanR))
+
+freq.3.subset %>%
+  select(success, antigentype, name, ratio.meanR, ratio.mutation, varR) -> freq.3.variables
+
+growth.2.subset %>%
+  select(antigentype, name, ratio.meanR, entropy) -> gp2.variables
+
+colnames(gp2.variables) = c("antigentype", "name", "gp2.ratio.meanR", "gp2.entropy")
+focus.data = left_join(freq.3.variables, gp2.variables) %>% mutate_at("antigentype", as.factor)
+
+focus.data %>%
+#  filter(ratio.meanR) %>% 
+  mutate(quadrant  = ifelse(gp2.entropy < 0 & ratio.meanR < 1, "lowerleft", 
+                            ifelse(gp2.entropy > 0 & ratio.meanR < 1, "upperleft",
+                                   ifelse(gp2.entropy> 0 & ratio.meanR > 1, "upperright", "lowerright")))) %>%
+  filter(ratio.meanR > 1) -> focus.sub
+
+focus.sub %>%
+  group_by(quadrant) %>%
+  summarize(num.rows = n()) %>%
+  mutate(rel.freq = num.rows/sum(num.rows)) 
+
+
+table.sucess = table(focus.sub$success, focus.sub$quadrant)
+
+focus.sub %>% 
+#ggplot(aes(x = success, y = gp2.ratio.meanR)) + geom_boxplot()  
+  ggplot(aes(x = ratio.meanR, y = gp2.entropy, color = success)) + geom_point(alpha = .5) +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 1)
+
+
+variable.1 = "ratio.meanR"
+variable.2 = "varR"
+
+#variables = c(variable.1, variable.2)
+
+var.1.breaks = seq(from = .95, to = 1.16, .02)
+var.2.breaks = seq(from = 0, to =  .004, .0005)
+
+  
+
+focus.data %>%
+    mutate(variable.1.group = cut(focus.sub[,`variable.1`], breaks = var.1.breaks),
+           variable.2.group = cut(focus.sub[, `variable.2`], breaks = var.2.breaks)) %>%
+    na.omit() %>%
+    group_by(variable.1.group, variable.2.group, success) %>%
+    summarize(num = n()) %>%
+    mutate(rel.freq = num/sum(num)) %>%
+    ungroup() %>%
+    select(-num) %>%
+    group_by(variable.1.group, variable.2.group) %>%
+    spread(key = success, value = rel.freq, fill = 0) %>%
+    gather(key = success, value = rel.freq, Transient, Est.) %>%
+    filter(success == "Est.") %>%
+    ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
+    scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
+    scale_fill_viridis(option="plasma")
+}
+clean.2D.plot <- function(plot, variable.name.1, variable.name.2, guide = TRUE) { 
+  step1 = plot + labs(x = variable.name.1, y  = variable.name.2, fill = "Proportion of \nPersistent Antigens") +
+    theme(axis.text = element_text(size =8), axis.text.x = element_text(angle = 60,  hjust=1),
+          axis.title = element_text(size = 10)) + 
+    theme(legend.key.size = unit(0.5, "cm")) +
+    theme(legend.text = element_text(size = 8), legend.title = element_text(size=8))  
+  if(guide == FALSE) {
+    step1 + guides(fill = FALSE)
+  }
+  step1
+}
+

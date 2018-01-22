@@ -39,8 +39,6 @@ set_my_colors_success <- function(length.of.success) {
   return(myColors)
 }
 
-
-
 plot_metric_density <- function(data.l, metrics) {
   # plot the differences in variables based on success
   # wraps for different metrics 
@@ -155,7 +153,6 @@ plot_full_output <- function(timeseries, trial, variable.set, tropics.meta.data)
   plot_grid(first.column, variable.plot, rel_widths = c(.9, 1.1))
 }
 
-
 plot_scatterplot <- function(meta.data, variable1, variable2, n.sample) {
   # Plot relationship between two variables 
   # wraps for difference samples 
@@ -216,46 +213,4 @@ fill_antigen_values <- function(meta.data.df) {
   ant.freq.success.l$antigentype = as.factor(ant.freq.success.l$antigentype)
   return(ant.freq.success.l)
 }
-
-#display <- function(correct.sample, incorrect.sample) { 
-
-#north.timeseries %>%
-#  mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
-#  gather(key = metric, value = value, -.id, -date, -trial.type) %>%
-#  filter((metric == "northI") & (.id == correct.sample | .id == incorrect.sample)) %>%
-#  ggplot(aes(x = date, y = value *.0025)) +
-#  geom_line(size = 1.5) +
-#  facet_grid(metric~trial.type, scales = "free") +
-#  ylab(label = "Number (per 100K)") + 
-#  theme(strip.text.x = element_text(size = 8)) +
-#  theme(strip.text.y = element_text(size = 6)) -> pop.dynamics
-
-#desired.antigenic.metrics = c("antigenicTypes", "meanLoad", "diversity", "antigenicDiversity")
-
-#north.track.antigen %>%
-#  mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
-#  gather(key = metric, value = value, -.id, -day, -trial.type) %>%
-#  filter(metric %in% desired.antigenic.metrics  & (.id == correct.sample | .id == incorrect.sample)) %>%
-#  ggplot(aes(x = day/365, y = value)) +
-#  geom_smooth(size = 1.5) +
-#  geom_line()+
-#  scale_x_continuous(limits = c(0,10), breaks  = seq(from = 0, to = 10, by = 1)) + 
-#  facet_grid(metric~trial.type, scales = "free") +
-#  theme(strip.text.x = element_text(size = 8)) +
-#  theme(strip.text.y = element_text(size = 6))  -> antigenic.dynamics
-
-#desired.fitness.metrics = c("meanR", "meanBeta")
-
-#north.track.fitness %>%
-#  mutate(trial.type = ifelse(.id %in% north.correct.trial, "correct", "incorrect")) %>%
-#  gather(key = metric, value = value, -.id, -day, -trial.type) %>%
-#  filter(metric %in% desired.fitness.metrics & (.id == correct.sample | .id == incorrect.sample)) %>%
-#  ggplot(aes(x = day/365, y = value)) +
-#  geom_smooth(size = 1.5)+
-#  geom_line(size = 1.5) +
-#  facet_grid(metric~trial.type, scales = "free") +
-#  theme(strip.text.x = element_text(size = 8)) +
-#  theme(strip.text.y = element_text(size = 6)) -> fitness.dynamics
-
-#plot_grid(pop.dynamics, antigenic.dynamics, fitness.dynamics, ncol = 1, rel_heights = c(.9, 1.3, 1))
 

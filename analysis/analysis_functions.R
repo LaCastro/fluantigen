@@ -65,18 +65,7 @@ find_antigen_emergence <- function(antigen.data){
   return(novel.types)
 }
 
-#find_successful_types <- function(frequencies, threshold, length) {
-  # determines succcess if a 
- # frequencies %>%
-#    filter(frequency > threshold) %>%
-#    group_by(antigentype) %>%
-#    summarize(n = n(), 
-#              max.freq  = max(frequency)) %>%
-#    filter(n > length) -> successful.types
-#    successful.types.id = successful.types$antigentype
 
-  #  return(successful.types.id)
-#}
 
 find_dominant_types_at_emerge <- function(antigen.frequencies) {
   # Find the frequency of the dominant type circulating at emergence 

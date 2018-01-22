@@ -260,10 +260,7 @@ calculate_entropy = function(antigen.frequency) {
 }
 
 
-
 ###########
-
-
 
 # Step 1. Put together list trials of transient and successful antigens ; this will be based on max.freq, and days above
 tropics.folder = "../data/tropics/eligible/"
@@ -362,8 +359,8 @@ freq.df.subset %>%
   mutate_at("name", as.factor) -> diff.df
 
 diff.df %>%
-  select(-second.gp) %>%
-  spread(key = variable, value = first.gp) -> growth.1.subset
+  select(-first.gp) %>%
+  spread(key = variable, value =second.gp) -> growth.2.subset
 
 ################ Step 9: Calculate Acceleration
 diff.df %>%
@@ -372,6 +369,7 @@ diff.df %>%
 diff.df %>%
   select(-first.gp, -second.gp) %>%
   spread(key = variable, value = accelerate) -> accelerate
+
 
 
  
