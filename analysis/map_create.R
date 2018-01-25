@@ -341,6 +341,12 @@ freq.df %>%
   filter(!(.id %in% not.full.dataset$.id)) %>%
   select(-.id) -> freq.df.subset
 
+
+############# Step 9 -- Calculate proprtion infected (easier to track)
+
+freq.df.subset %>%
+  mutate(prop.I  = totalI/40000000 * 100) -> freq.df.subset
+
 ############## Section 9 - Calculate Growth Differences 
 
 calculate_growth_phase = function(x, phase1, phase2) {
@@ -360,7 +366,7 @@ freq.df.subset %>%
 
 diff.df %>%
   select(-first.gp) %>%
-  spread(key = variable, value =second.gp) -> growth.2.subset
+  spread(key = variable, value = second.gp) -> growth.2.subset
 
 ################ Step 9: Calculate Acceleration
 diff.df %>%
@@ -373,3 +379,4 @@ diff.df %>%
 
 
  
+

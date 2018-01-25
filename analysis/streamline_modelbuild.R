@@ -79,7 +79,10 @@ while(build == TRUE) {
       build = FALSE
     }
 }
-single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
+ single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
+
+write.csv(single.term.results, '../results/single.term.03.vifsecond.csv')
+
 
 ############## STEP TWO: Interactions 
 base.formula = paste0(paste(variable.list, collapse = "+"), "+(1|name)")
@@ -170,9 +173,11 @@ calculate_SenSpec(glmer.probs, testdata)
 trans.pop3 = data.frame(cbind(sen = glmer.ROC$sensitivities,
                               spec = glmer.ROC$specificities,
                               thres = glmer.ROC$thresholds))
-write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/roc.transpop.csv")
+write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/single.term.roc.vif2.csv")
 
 
+trans.pop3 %>%
+  ggplot(aes(x  = (1-spec), y = sen)) + geom_line()
 
 roc.data = data.frame(cbind(thres = glmer.ROC$thresholds,
                             sen = glmer.ROC$sensitivities,

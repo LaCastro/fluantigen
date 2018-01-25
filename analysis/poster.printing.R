@@ -1,36 +1,36 @@
 ############# Poster Scripts 
 freq.1.subset %>%
-  select(success, name,  antigentype, ratio.varSigma, infected, diversity, antigenicDiversity) %>%
+  select(success, name,  antigentype, varR, ratio.varSigma, meanR, individual.varSigma) %>%
   #  mutate_if(is.numeric, scale) %>%
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq1") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.1.variables
 freq.2.subset %>%
-  select(success, name, antigentype, ratio.varR, individual.varSigma) %>%
+  select(success, name, antigentype, tmrca, antigenicTypes) %>%
   #  mutate_if(is.numeric, scale) %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq2") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.2.variables
 freq.3.subset %>%
-  select(success, name, antigentype, ratio.meanR, varR, ratio.mutation) %>%
+  select(success, name, antigentype, ratio.meanR, varR, varBeta, ratio.mutation, meanR) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq3") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.3.variables
 growth.1.subset %>%
-  select(success, name, antigentype, ratio.meanR, ratio.mutation) %>%
+  select(success, name, antigentype, meanSigma, individual.meanSigma) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.1") %>%
   mutate(id = paste0(variable, "_", time.point)) -> gp.1.variables
 growth.2.subset %>%
-  select(success, name, antigentype,ratio.meanR, entropy, day, ratio.varR, varR) %>%
+  select(success, name, antigentype, entropy, day, individual.meanSigma, meanSigma) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.2") %>%
   mutate(id = paste0(variable, "_", time.point)) -> gp.2.variables
 accelerate %>%
-  select(success,name, antigentype, ratio.mutation, day) %>%
+  select(success,name, antigentype, day) %>%
   #  mutate_if(is.numeric, scale)   %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "accel") %>%
@@ -40,22 +40,33 @@ accelerate %>%
 all.variables = rbind(freq.1.variables, freq.2.variables, freq.3.variables,
                       gp.1.variables, gp.2.variables, accel.variables)
 
-all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "ratio.meanR_gp.2", "varR_freq3", "ratio.mutation_freq3",
-                                                       "entropy_gp.2", "ratio.varR_freq2", "ratio.meanR_gp.1", "ratio.varSigma_freq1",
-                                                       "infected_freq1", "day_gp.2", "ratio.mutation_gp.1", "ratio.mutation_accel", 
-                                                       "ratio.varR_gp.2", "individual.varSigma_freq2", "day_accel", "diversity_freq1", 
-                                                       "antigenicDiversity_freq1", "varR_gp.2"))
+
+#all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "ratio.meanR_gp.2", "varR_freq3", "ratio.mutation_freq3",
+#                                                       "entropy_gp.2", "ratio.varR_freq2", "ratio.meanR_gp.1", "ratio.varSigma_freq1",
+#                                                       "infected_freq1", "day_gp.2", "ratio.mutation_gp.1", "ratio.mutation_accel", 
+#                                                       "ratio.varR_gp.2", "individual.varSigma_freq2", "day_accel", "diversity_freq1", 
+#                                                       "antigenicDiversity_freq1", "varR_gp.2"))
+
+all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "varR_freq3", "individual.meanSigma_gp.2",
+                                                       "meanSigma_gp.2", "individual.varSigma_freq1", "entropy_gp.2", "individual.meanSigma_gp.1",
+                                                       "antigenicTypes_freq2", "ratio.varBeta_freq3", "ratio.mutation_freq3", "day_gp.2",
+                                                       "meanSigma_gp.1", "ratio.varSigma_freq1", "meanR_freq1", "tmrca_freq1", "varR_freq1", "day_accel"))
+
 
 ########## Figure 4 A 
-variable.1 = "ratio.meanR_freq3"; variable.2 = "ratio.meanR_gp.2"
+variable.1 = "ratio.meanR_freq3"; variable.2 = "varR_freq3"
 variables = c(variable.1, variable.2)
 
 var.1.breaks = seq(from = .94, to = 1.16, by = .015)
-var.2.breaks = seq(from = -.07, to = .05, by = .01)
+
+var.2.breaks = round(seq(from = .000380, to = .003763, length.out = 10), digits = 4)
+
+
 all.variables %>%
   filter(id %in%variables) %>%
   select(success,name,antigentype,id,value) %>%
   spread(key = id, value = value) -> data.set
+
 data.set %>%
   select(success, one_of(variables)) %>%
   mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
@@ -75,23 +86,26 @@ data.set %>%
   scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variables.1
 
 top.5.plot.1 = clean.2D.plot(variables.1, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")), 
-                             variable.name.2 = expression(paste("Chage in ", italic("R"), " Advantage from 2-3%")), guide = FALSE)
-
+                             variable.name.2 = expression(paste("Variance in Population ", italic("R")), guide = FALSE))
+top.5.plot.1
 #top.variables = two.d.plot(data.set =all.variables, variable.1 = "ratio.meanR_freq3", variable.2 = "varR_freq3", num.bins = 20, digits = 4)
 #top.5.plot.2 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
 #                             variable.name.2 = expression(paste("Variance in ", italic("R")," : 3%")), guide = FALSE)
 
 ################### Figure 4 B #################################
-variable.1 = "ratio.meanR_freq3"; variable.2 = "ratio.mutation_freq3" 
+variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.meanSigma_gp.2" 
 variables = c(variable.1, variable.2)
 
 var.1.breaks = seq(from = .94, to = 1.16, by = .015)
-var.2.breaks = seq(from = .15, to = 2.2, by = .15)
 
 all.variables %>%
   filter(id %in%variables) %>%
   select(success,name,antigentype,id,value) %>%
   spread(key = id, value = value) -> data.set
+
+range(data.set$individual.meanSigma_gp.2)
+var.2.breaks = round(seq(from = -.046, to = .0204, length.out = 10), digits = 3)
+
 data.set %>%
   select(success, one_of(variables)) %>%
   mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
@@ -109,21 +123,24 @@ data.set %>%
   ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
   scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
   scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variable.plot.2
+
 top.5.plot.2 = clean.2D.plot(variable.plot.2, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Relative Deleterious Mutation Load: 3%", guide = FALSE)
+                             variable.name.2 = "Mean Focal Antigenic\n Advancement: 3%", guide = FALSE)
 
 ##################### Figure 4 C ################################
-variable.1 = "ratio.meanR_freq3"; variable.2 = "entropy_gp.2"
+variable.1 = "ratio.meanR_freq3"; variable.2 = "meanSigma_gp.2"
 variables = c(variable.1, variable.2)
 
 var.1.breaks = seq(from = .94, to = 1.16, by = .015)
-var.2.breaks = seq(from = -.7, to = 1, by = .1)
-var.2.breaks[8] = 0
-var.2.breaks[7] = -0.1
+#var.2.breaks = seq(from = -.7, to = 1, by = .1)
+#var.2.breaks[8] = 0
+#var.2.breaks[7] = -0.1
 all.variables %>%
   filter(id %in%variables) %>%
   select(success,name,antigentype,id,value) %>%
   spread(key = id, value = value) -> data.set
+var.2.breaks = round(seq(from=-.02, to = 0.03, length.out = 10), digits = 4)
+
 data.set %>%
   select(success, one_of(variables)) %>%
   mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
@@ -140,13 +157,101 @@ data.set %>%
   filter(success == "Est.") %>%
   ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
   scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma") -> variable.plot.3
+  scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variable.plot.3
 top.5.plot.3 = clean.2D.plot(variable.plot.3, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Change in Shannon's Diversity Index from 2-3%")
+                             variable.name.2 = "Change in mean population \n Antigenic Advancement from 2-3%")
 
 top.5.variables = cowplot::plot_grid(top.5.plot.1,top.5.plot.2, top.5.plot.3, nrow = 1, rel_widths = c(.98,.98, 1.2))
 cowplot::save_plot(top.5.variables, filename = "exploratory.figs/top.4.variables.pdf", base_height = 7,
                    base_aspect_ratio = 2.3)
+
+##################### Figure 4 D ################################
+variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.varSigma_freq1"
+variables = c(variable.1, variable.2)
+
+var.1.breaks = seq(from = .94, to = 1.16, by = .015)
+#var.2.breaks = seq(from = -.7, to = 1, by = .1)
+#var.2.breaks[8] = 0
+#var.2.breaks[7] = -0.1
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+range(data.set$individual.varSigma_freq1)
+var.2.breaks = round(seq(from=.08, to = 0.25, length.out = 10), digits = 2)
+
+data.set %>%
+  select(success, one_of(variables)) %>%
+  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
+         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
+  na.omit() %>%
+  group_by(variable.1.group, variable.2.group, success) %>%
+  summarize(num = n()) %>%
+  mutate(rel.freq = num/sum(num)) %>%
+  ungroup() %>%
+  select(-num) %>%
+  group_by(variable.1.group, variable.2.group) %>%
+  spread(key = success, value = rel.freq, fill = 0) %>%
+  gather(key = success, value = rel.freq, Transient, Est.) %>%
+  filter(success == "Est.") %>%
+  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
+  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
+  scale_fill_viridis(option="plasma")+ guides(fill = FALSE) -> variable.plot.4
+top.5.plot.4 = clean.2D.plot(variable.plot.4, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
+                             variable.name.2 = "Variance in Focal \n Antigenic Advancement : 1%")
+###################################################################################
+
+##################### Figure 4 D ################################
+variable.1 = "ratio.meanR_freq3"; variable.2 = "entropy_gp.2"
+variables = c(variable.1, variable.2)
+
+var.1.breaks = seq(from = .94, to = 1.16, length.out = 20)
+
+#var.2.breaks = seq(from = -.7, to = 1, by = .1)
+#var.2.breaks[8] = 0
+#var.2.breaks[7] = -0.1
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+var.2.breaks = round(seq(from= -.7, to = 1.1, length.out = 20), digits = 3)
+
+data.set %>%
+  select(success, one_of(variables)) %>%
+  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
+         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
+  na.omit() %>%
+  group_by(variable.1.group, variable.2.group, success) %>%
+  summarize(num = n()) %>%
+  mutate(rel.freq = num/sum(num)) %>%
+  ungroup() %>%
+  select(-num) %>%
+  group_by(variable.1.group, variable.2.group) %>%
+  spread(key = success, value = rel.freq, fill = 0) %>%
+  gather(key = success, value = rel.freq, Transient, Est.) %>%
+  filter(success == "Est.") -> data.success
+  
+
+  breaks_x = 
+
+  data.success %>% 
+  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
+  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
+  scale_fill_viridis(option="plasma") -> variable.plot.5
+
+  
+  top.5.plot.5 = clean.2D.plot(variable.plot.5, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
+                             variable.name.2 = "Difference in Shannon's H : 2-3%")
+
+
+
+
+
+
+top.6.variables = cowplot::plot_grid(top.5.plot.1,top.5.plot.2, top.5.plot.3,top.5.plot.4, top.5.plot.5, nrow = 2)
+cowplot::save_plot(top.6.variables, filename = "exploratory.figs/top.6.variables.pdf", base_height = 8,
+                   base_aspect_ratio = 2)
 
 
 
@@ -362,3 +467,26 @@ days.alive.df %>%
   summarize(median.days = median(days.alive/365),
             lower.quantile = quantile(days.alive/365, probs = .25),
             upper.quantile = quantile(days.alive/365, probs = .75))
+
+
+#########################################
+data.set = read.csv("../results/")
+
+
+
+variable.1 = "ratio.meanR_freq3"; variable.2 = "varR_freq3"; variable.3 = "entropy_gp.2"
+
+variables = c(variable.1, variable.2, variable.3)
+
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+head(data.set)
+
+data.set %>% 
+  ggplot(aes(ratio.meanR_freq3, varR_freq3,color = entropy_gp.2, size = entropy_gp.2)) + 
+  geom_point(alpha = .8) + scale_color_viridis(option="plasma") + 
+  facet_wrap(~success)
+

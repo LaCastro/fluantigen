@@ -1,161 +1,58 @@
-######## Var R 
-viral.fitness[[3]] %>%
-  select(varR) -> varR.trial
-
-track.antigen[[3]] %>%
-  select(day, antigenicTypes, I) -> antigenicTypes.trial
-trial.data = cbind(varR.trial, antigenicTypes.trial)
-trial.data %>%
-  gather(key = variable, value = value, -day) -> trial.data.l
-
-trial.data %>%
-  gather(key = variable, value = value, -day) %>%
-  ggplot(aes(x = day, y = value)) + geom_line() + facet_wrap(~variable, ncol = 1, scales = "free") -> varR.by.infected
+## Exclusion 
 
 
-######## Does variance in frequency correspond to variance in frequency or hthe dominant type
-
-# Caclulating dominant. freq for each time step 
-antigen.frequencies[[3]] %>%
-  group_by(day) %>%
-  summarize(dom.freq = max(frequency),
-            antigentype = antigentype[which.max(frequency)]) -> dominant.freq
-dominant.freq$variable =  "dom.freq"
-colnames(dominant.freq) = c("day", "value", "antigentype", "variable")
+# What I believe was taken out at this point 
+# vif.excluded = c("freq.2.diversity", "freq.2.antigenicDiversity", "freq.2.entropy",
+#                 "freq.3.diversity", "freq.3.antigenicDiversity", "freq.2.dominant.freq",
+#                 "freq.2.infected", "freq.1.entropy", "freq2.meanR", "freq.2.meanR",
+#                 "freq.2.totalS", "freq.3.dominant.freq", "freq.2.tmrca")
 
 
-dominant.freq %>%
-  select(-antigentype) %>%
-  bind_rows(trial.data.l) 
-  spread(key = variable, value = value) %>%
-  ggplot(aes(x=dom.freq, y =antigenicTypes)) + geom_point() + geom_smooth(method = "lm")
+###### 1/22 ################################################### 
+# Snapshot 
+vif.excluded = c("individual.meanMut", "individual.varMut", "individual.meanBeta", "individual.meanR", "individual.meanSigma",
+                 "ratio.meanSigma", "meanSigma", "covBetaSigma", "meanBeta", "individual.varR", "individual.varBeta", "ratio.varR")
 
-cor.test(varR.dataset$dom.freq, varR.dataset$antigenicTypes)
+# Growth 
+vif.excluded = c("individual.meanMut", "individual.varBeta", "individual.varR", "ratio.meanR", "meanR", "ratio.meanBeta",
+                 "individual.meanR", "ratio.meanSigma", "varSigma", "individual.varMut")
 
-#  ggplot(aes(x = day/365-5, y = value)) + geom_line() +facet_wrap(~variable, scales = "free", ncol = 1)  +
-#  scale_x_continuous(breaks = seq(0,25, 1))
+# Combined 
+vif.excluded = c("freq.2.ratio.meanBeta", "freq.1.ratio.meanBeta", "freq.2.meanR", "diff.1.meanSigma",
+                 "freq.1.meanR", "diff.1.individual.meanR", "diff.1.individual.meanSigma", "diff.2.individual.meanSigma",
+                 "freq.2.varSigma", "freq.2.ratio.meanR", "freq.3.varSigma", "diff.1.ratio.varR", "accel.ratio.mutation",
+                 "accel.ratio.varR", "diff.1.individual.meanBeta", "accel.ratio.varBeta", "accel.individual.meanBeta",
+                 "freq.1.ratio.mutation", "freq.2.ratio.mutation", "accel.meanLoad", "freq.3.ratio.mutation")
 
 
 
+##### 1/24 ######################################################
 
-varR.population.plot = plot_grid(antigen.dynamics, varR.plot,  ncol = 1)
+## Exclusion based on collinearity after everything has been combined and up until VIF < 5 
+vif.excluded = c("freq.1.individual.meanMut", "freq.1.individual.meanBeta", "freq.2.individual.meanMut", "freq.3.individual.meanMut",
+                 "diff.1.individual.meanMut", "diff.1.individual.meanBeta", "diff.2.individual.meanMut", "accel.individual.meanMut",
+                 "diff.1.individual.varMut", "diff.1.individual.varBeta", "diff.1.individual.varR", "accel.individual.varMut",
+                 "accel.individual.varBeta", "accel.individual.varR", "freq.2.individual.varMut", "freq.3.individual.varMut", 
+                 "freq.1.individual.varBeta", "freq.1.individual.varR", "diff.2.individual.varMut", "diff.1.ratio.meanR",
+                 "accel.ratio.meanR", "freq.2.individual.meanBeta", "freq.3.individual.meanBeta", "diff.1.individual.meanR",
+                 "diff.1.ratio.meanSigma", "accel.ratio.meanSigma", "freq.2.ratio.meanSigma", "freq.3.ratio.meanSigma",
+                 "diff.1.meanR", "diff.2.individual.meanR", "freq.2.individual.meanR", "freq.1.individual.meanR", "accel.ratio.meanBeta",
+                 "accel.meanR", "freq.2.meanR", "freq.3.meanR", "freq.1.individual.meanSigma", "freq.2.individual.meanSigma", 
+                 "freq.3.individual.meanSigma", "diff.2.ratio.meanR", "freq.2.ratio.meanR", "accel.individual.meanBeta", "accel.meanSigma",
+                 "freq.3.individual.meanR", "diff.2.ratio.meanBeta", "freq.1.ratio.meanBeta", "freq.3.ratio.meanBeta", "accel.individual.meanSigma",
+                 "freq.1.ratio.meanR", "diff.2.meanR", "diff.2.ratio.meanSigma", "diff.1.varSigma", "freq.1.meanSigma", "freq.2.meanSigma",
+                 "freq.3.meanSigma", "freq.1.ratio.meanSigma", "accel.varSigma", "freq.2.varSigma", "freq.3.varSigma", "accel.individual.meanR",
+                 "accel.varR", "freq.1.covBetaSigma", "freq.2.covBetaSigma", "freq.3.covBetaSigma", "diff.2.varSigma", "freq.1.meanBeta",
+                 "freq.2.meanBeta", "freq.3.meanBeta", "accel.ratio.varBeta", "freq.2.individual.varBeta", "freq.2.individual.varR",
+                 "freq.3.individual.varBeta", "freq.3.individual.varR", "freq.1.individual.varMut", "diff.1.ratio.varR", "diff.2.individual.varBeta",
+                 "diff.2.individual.varR", "accel.ratio.varR", "accel.ratio.mutation", "freq.2.ratio.varR", "freq.3.ratio.varR",
+                 "freq.1.ratio.varR", 'diff.1.meanLoad', "freq.1.ratio.mutation", "freq.2.ratio.mutation", "freq.2.ratio.meanBeta",
+                 "diff.2.ratio.mutation", "diff.2.ratio.varR", "diff.1.ratio.varSigma", "diff.1.ratio.mutation", "freq.1.entropy",
+                 "freq.2.entropy", "freq.3.entropy", "accel.diversity", "accel.antigenicDiversity", "freq.1.varSigma", "accel.ratio.varSigma",
+                 "diff.1.entropy", "diff.1.dominant.freq", "diff.1.antigenicTypes")
 
-
-# Caclulating dominant. freq for each time step 
-antigen.frequencies[[3]] %>%
-  group_by(day) %>%
-  summarize(mean.frequency = mean(frequency)) -> mean.frequency
-
-antigen.frequencies[[3]] %>%
-  left_join(mean.frequency) %>%
-  mutate(diff = (frequency-mean.frequency)^2) %>%
-  group_by(day) %>%
-  summarize(sum = sum(diff),
-            num = n()) %>%
-  mutate(variance = sum/(num-1)) -> variance
-
-variance %>%
-  select(day, variance) %>%
-  left_join(varR.dataset) -> varR.dataset
-
-cor.test(varR.dataset$antigenicTypes, varR.dataset$variance)
-
-
-varR.dataset %>%
-  mutate_at(-c(1), scale) %>%
-  select(day, varR, antigenicTypes) %>%
-  gather(key = variable, value = value, -day) %>%
-  ggplot(aes(x = day, y = value, group = variable, color = variable)) + geom_line(size = 1.2) +
-  scale_x_continuous(breaks = seq(1,25,2)) +
-  scale_color_manual(values = c("orange", "purple"))
-  
-  #ggplot(aes(x = varR, y = variance)) + geom_point() + geom_smooth(method = "lm")
-    
-        
-
-two.d.plot(data.set = dataPurged, variable.1 = "diversity_freq1", variable.2 = "varR_gp.2", num.bins = 15, digits = 4)
-
-
-
-
-
-#################### ratio.meanR change
-freq.3.subset %>%
-  filter(name == "tropics_13") %>%
-  select(antigentype,success) -> trial.antigens
-
-viral.type.fitness[[3]] %>%
-  select(day, meanR, antigenType) %>%
-  filter(antigenType %in% trial.antigens$antigentype) %>%
-  mutate_at("antigenType", as.character) %>%
-  left_join(trial.antigens, by = c("antigenType" = "antigentype")) -> viral.types.R
-
-
-freq.2.subset %>%
-  filter(name == "tropics_13") %>%
-  select(antigentype, day) -> day.start; colnames(day.start)[2] = "day.start"
-  
-freq.3.subset %>%
-  filter(name == "tropics_13") %>%
-  select(antigentype, day) -> day.finish ; colnames(day.finish)[2] = "day.finish"
-
-viral.types.R %>%
-  left_join(day.start, by = c("antigenType" = "antigentype")) %>%
-  left_join(day.finish, by = c("antigenType" = "antigentype")) %>%
-  mutate_at("antigenType", as.factor) %>%
-  group_by(antigenType) %>%
-  filter(day >= day.start[1] & day <= day.finish[1]) %>%
-  mutate(time.point = row_number(),
-         diff = day.finish-day.start) %>%
-  slice(c(1, n())) %>%
-  summarize(mean.R.diff = exp(meanR[2])-exp(meanR[1]),
-            success = success[1],
-            diff = diff[1],
-            finishing.meanR = exp(meanR[2])) %>%
-  ggplot(aes(x = finishing.meanR, y = mean.R.diff, group = antigenType, color = success)) + geom_point()
-
-
-
-
-
-
-viral.fitness[[3]] %>%
-  select(day, varR) %>%
-  rename(pop.varR = varR) -> pop.varR
-
-################ Look at ratios of varR
-### Identify successful types
-freq.df.subset %>%
-  filter(name == "tropics_13") %>%
-  group_by(antigentype) %>%
-  select(antigentype, success) -> successful.antigens
-
-
-viral.type.fitness[[3]] %>%
-  mutate_at("antigenType", as.character) %>%
-  left_join(successful.antigens, by = c("antigenType" = "antigentype")) %>%
-  filter(!is.na(success)) %>%
-  left_join(pop.varR) %>%
-  mutate(exp(varR))
-
-time.series[[3]] %>%
-  ggplot(aes(x = (date*365), y = antigenicDiversity)) + geom_line() -> antigenic.diversity.plot
-
-entropy[[3]] %>%
-  ggplot(aes(x = (day/365)-5, y = entropy)) + geom_line() -> entropy.plot
-
-plot_grid(antigenic.diversity.plot, entropy.plot, ncol = 1)
-  
- 
-
-
-
-
-
-
-
-
-
+## Exclusion based on collinearity after everything has been combined and up until VIF < 5 and
+# incorporating the metric of I/N
 
 
 
