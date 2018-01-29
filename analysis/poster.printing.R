@@ -1,3 +1,9 @@
+library(hexbin)
+library(viridis)
+
+#scaled data 
+input.data = read.csv("~/Dropbox/current_fluantigen/model_csvs/lower.vif.prop.csv")
+
 ############# Poster Scripts 
 freq.1.subset %>%
   select(success, name,  antigentype, varR, ratio.varSigma, meanR, individual.varSigma) %>%
@@ -54,207 +60,130 @@ all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "var
 
 
 ########## Figure 4 A 
+fill = "rel.freq"
+
+cut_data <- function(data, variables, type, bins) { 
+  all.variables %>%
+    filter(id %in%variables) %>%
+    select(success,name,antigentype,id,value) %>%
+    spread(key = id, value = value) -> data.set
+  
+  data.set %>%
+    select(success, one_of(variables)) %>%
+    mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = bins),
+           variable.2.group = cut(data.set[, `variable.2`], breaks = bins)) %>%
+    na.omit() -> cut.data
+  
+  cut.data %>%   
+    group_by(variable.1.group, variable.2.group, success) %>%
+    summarize(num = n()) %>%
+    mutate(rel.freq = num/sum(num)) -> rel.freq.data
+  if (type == "Est.") {
+    cut.data %>% 
+      left_join(rel.freq.data) %>% 
+      ungroup() %>%
+      select(-num) %>%
+      filter(success == "Est.") -> return.data 
+  } else { 
+    cut.data %>% 
+      left_join(rel.freq.data) %>%
+      ungroup() %>%
+      select(-num) %>%
+      filter(success == "Transient" & rel.freq == "1") -> return.data
+  } 
+  return(return.data)
+}
+
 variable.1 = "ratio.meanR_freq3"; variable.2 = "varR_freq3"
 variables = c(variable.1, variable.2)
 
-var.1.breaks = seq(from = .94, to = 1.16, by = .015)
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
+variable.name.2 = expression(paste("Variance in Population ", italic("R")))
 
-var.2.breaks = round(seq(from = .000380, to = .003763, length.out = 10), digits = 4)
+est.data = cut_data(all.variables, variables, type = "Est.", bins = 15)
+transient.data = cut_data(all.variables, variables, type = "Transient", bins = 15)
+                                   
+est.data %>%
+  ggplot(aes(x = ratio.meanR_freq3, y = varR_freq3, z = rel.freq)) + stat_summary_hex(fun = mean, bins = 40)  + 
+  scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
+  geom_point(data = transient.data, aes(x = ratio.meanR_freq3, y = varR_freq3), color = "grey", alpha = .5) + 
+  theme(legend.position = "none") -> one.vs.two
 
-
-all.variables %>%
-  filter(id %in%variables) %>%
-  select(success,name,antigentype,id,value) %>%
-  spread(key = id, value = value) -> data.set
-
-data.set %>%
-  select(success, one_of(variables)) %>%
-  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
-         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
-  na.omit() %>%
-  group_by(variable.1.group, variable.2.group, success) %>%
-  summarize(num = n()) %>%
-  mutate(rel.freq = num/sum(num)) %>%
-  ungroup() %>%
-  select(-num) %>%
-  group_by(variable.1.group, variable.2.group) %>%
-  spread(key = success, value = rel.freq, fill = 0) %>%
-  gather(key = success, value = rel.freq, Transient, Est.) %>%
-  filter(success == "Est.") %>%
-  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
-  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variables.1
-
-top.5.plot.1 = clean.2D.plot(variables.1, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")), 
-                             variable.name.2 = expression(paste("Variance in Population ", italic("R")), guide = FALSE))
-top.5.plot.1
-#top.variables = two.d.plot(data.set =all.variables, variable.1 = "ratio.meanR_freq3", variable.2 = "varR_freq3", num.bins = 20, digits = 4)
-#top.5.plot.2 = clean.2D.plot(top.variables, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-#                             variable.name.2 = expression(paste("Variance in ", italic("R")," : 3%")), guide = FALSE)
 
 ################### Figure 4 B #################################
 variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.meanSigma_gp.2" 
 variables = c(variable.1, variable.2)
 
-var.1.breaks = seq(from = .94, to = 1.16, by = .015)
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
+variable.name.2 = expression(paste("Susceptibility to Antigen: 2-3%"))
 
-all.variables %>%
-  filter(id %in%variables) %>%
-  select(success,name,antigentype,id,value) %>%
-  spread(key = id, value = value) -> data.set
+est.data = cut_data(all.variables, variables, type = "Est.", bins = 15)
+transient.data = cut_data(all.variables, variables, type = "Transient", bins = 15)
 
-range(data.set$individual.meanSigma_gp.2)
-var.2.breaks = round(seq(from = -.046, to = .0204, length.out = 10), digits = 3)
-
-data.set %>%
-  select(success, one_of(variables)) %>%
-  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
-         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
-  na.omit() %>%
-  group_by(variable.1.group, variable.2.group, success) %>%
-  summarize(num = n()) %>%
-  mutate(rel.freq = num/sum(num)) %>%
-  ungroup() %>%
-  select(-num) %>%
-  group_by(variable.1.group, variable.2.group) %>%
-  spread(key = success, value = rel.freq, fill = 0) %>%
-  gather(key = success, value = rel.freq, Transient, Est.) %>%
-  filter(success == "Est.") %>%
-  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
-  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variable.plot.2
-
-top.5.plot.2 = clean.2D.plot(variable.plot.2, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Mean Focal Antigenic\n Advancement: 3%", guide = FALSE)
+est.data %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, z = fill)) + stat_summary_hex(fun = mean, bins = 40)  + 
+  scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
+  geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) + 
+  theme(legend.position = "none") -> one.vs.three
 
 ##################### Figure 4 C ################################
 variable.1 = "ratio.meanR_freq3"; variable.2 = "meanSigma_gp.2"
 variables = c(variable.1, variable.2)
 
-var.1.breaks = seq(from = .94, to = 1.16, by = .015)
-#var.2.breaks = seq(from = -.7, to = 1, by = .1)
-#var.2.breaks[8] = 0
-#var.2.breaks[7] = -0.1
-all.variables %>%
-  filter(id %in%variables) %>%
-  select(success,name,antigentype,id,value) %>%
-  spread(key = id, value = value) -> data.set
-var.2.breaks = round(seq(from=-.02, to = 0.03, length.out = 10), digits = 4)
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
+variable.name.2 = expression(paste("Population Susceptibility : 2%"))
 
-data.set %>%
-  select(success, one_of(variables)) %>%
-  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
-         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
-  na.omit() %>%
-  group_by(variable.1.group, variable.2.group, success) %>%
-  summarize(num = n()) %>%
-  mutate(rel.freq = num/sum(num)) %>%
-  ungroup() %>%
-  select(-num) %>%
-  group_by(variable.1.group, variable.2.group) %>%
-  spread(key = success, value = rel.freq, fill = 0) %>%
-  gather(key = success, value = rel.freq, Transient, Est.) %>%
-  filter(success == "Est.") %>%
-  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
-  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma") + guides(fill = FALSE) -> variable.plot.3
-top.5.plot.3 = clean.2D.plot(variable.plot.3, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Change in mean population \n Antigenic Advancement from 2-3%")
+est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
+transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
 
-top.5.variables = cowplot::plot_grid(top.5.plot.1,top.5.plot.2, top.5.plot.3, nrow = 1, rel_widths = c(.98,.98, 1.2))
-cowplot::save_plot(top.5.variables, filename = "exploratory.figs/top.4.variables.pdf", base_height = 7,
-                   base_aspect_ratio = 2.3)
+est.data %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, z = fill)) + stat_summary_hex(fun = mean, bins = 50)  + 
+  scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
+  geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) + 
+  theme(legend.position = "none") -> one.vs.four
 
 ##################### Figure 4 D ################################
+
 variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.varSigma_freq1"
 variables = c(variable.1, variable.2)
 
-var.1.breaks = seq(from = .94, to = 1.16, by = .015)
-#var.2.breaks = seq(from = -.7, to = 1, by = .1)
-#var.2.breaks[8] = 0
-#var.2.breaks[7] = -0.1
-all.variables %>%
-  filter(id %in%variables) %>%
-  select(success,name,antigentype,id,value) %>%
-  spread(key = id, value = value) -> data.set
-range(data.set$individual.varSigma_freq1)
-var.2.breaks = round(seq(from=.08, to = 0.25, length.out = 10), digits = 2)
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
+variable.name.2 = expression(paste("Susceptibility to Angtigen (Var) : 1%"))
 
-data.set %>%
-  select(success, one_of(variables)) %>%
-  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
-         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
-  na.omit() %>%
-  group_by(variable.1.group, variable.2.group, success) %>%
-  summarize(num = n()) %>%
-  mutate(rel.freq = num/sum(num)) %>%
-  ungroup() %>%
-  select(-num) %>%
-  group_by(variable.1.group, variable.2.group) %>%
-  spread(key = success, value = rel.freq, fill = 0) %>%
-  gather(key = success, value = rel.freq, Transient, Est.) %>%
-  filter(success == "Est.") %>%
-  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
-  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma")+ guides(fill = FALSE) -> variable.plot.4
-top.5.plot.4 = clean.2D.plot(variable.plot.4, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Variance in Focal \n Antigenic Advancement : 1%")
-###################################################################################
+est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
+transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
 
-##################### Figure 4 D ################################
+est.data %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, z = fill)) + stat_summary_hex(fun = mean, bins = 40)  + 
+  scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
+  geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) + 
+  theme(legend.position = "none") -> one.vs.five
+
+
+##################### Figure 4 E  ################################
 variable.1 = "ratio.meanR_freq3"; variable.2 = "entropy_gp.2"
 variables = c(variable.1, variable.2)
 
-var.1.breaks = seq(from = .94, to = 1.16, length.out = 20)
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
+variable.name.2 = expression(paste("Change in ", italic("H"),  ":2-3%"))
 
-#var.2.breaks = seq(from = -.7, to = 1, by = .1)
-#var.2.breaks[8] = 0
-#var.2.breaks[7] = -0.1
-all.variables %>%
-  filter(id %in%variables) %>%
-  select(success,name,antigentype,id,value) %>%
-  spread(key = id, value = value) -> data.set
+est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
+transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
 
-var.2.breaks = round(seq(from= -.7, to = 1.1, length.out = 20), digits = 3)
+est.data %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, z = fill)) + stat_summary_hex(fun = mean, bins = 40)  + 
+  scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
+  geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) -> one.vs.six
+one.vs.six.b = one.vs.six + theme(legend.position = "none")
 
-data.set %>%
-  select(success, one_of(variables)) %>%
-  mutate(variable.1.group = cut(data.set[,`variable.1`], breaks = var.1.breaks),
-         variable.2.group = cut(data.set[, `variable.2`], breaks = var.2.breaks)) %>%
-  na.omit() %>%
-  group_by(variable.1.group, variable.2.group, success) %>%
-  summarize(num = n()) %>%
-  mutate(rel.freq = num/sum(num)) %>%
-  ungroup() %>%
-  select(-num) %>%
-  group_by(variable.1.group, variable.2.group) %>%
-  spread(key = success, value = rel.freq, fill = 0) %>%
-  gather(key = success, value = rel.freq, Transient, Est.) %>%
-  filter(success == "Est.") -> data.success
-  
+legend <- get_legend(one.vs.six)
+plots <- align_plots(one.vs.two, one.vs.three, one.vs.four, one.vs.five, one.vs.six.b, align = "v", axis = "l")
 
-  breaks_x = 
+bottom.row = plot_grid(plots[[4]], plots[[5]], legend, nrow = 1)
+first.row = plot_grid(plots[[1]], plots[[2]], plots[[3]], nrow = 1)
 
-  data.success %>% 
-  ggplot(aes(variable.1.group, variable.2.group, fill = rel.freq)) + geom_tile() +
-  scale_x_discrete(labels = var.1.breaks) + scale_y_discrete(labels = var.2.breaks) +
-  scale_fill_viridis(option="plasma") -> variable.plot.5
-
-  
-  top.5.plot.5 = clean.2D.plot(variable.plot.5, variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")),
-                             variable.name.2 = "Difference in Shannon's H : 2-3%")
-
-
-
-
-
-
-top.6.variables = cowplot::plot_grid(top.5.plot.1,top.5.plot.2, top.5.plot.3,top.5.plot.4, top.5.plot.5, nrow = 2)
-cowplot::save_plot(top.6.variables, filename = "exploratory.figs/top.6.variables.pdf", base_height = 8,
-                   base_aspect_ratio = 2)
-
-
-
+final.plot = plot_grid(first.row, bottom.row, ncol = 1)
+save_plot(final.plot, filename = "exploratory.figs/modulation.variables.pdf", base_height = 8, base_aspect_ratio = 2)
 
 ################################ Figure 1 -- Full Overview 
 timeseries = map(trial.dirs, function(x) read.table(paste0(tropics.folder,x,"/out.timeSeries.txt"), header = TRUE))

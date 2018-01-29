@@ -788,7 +788,7 @@ public class HostPopulation {
             ArrayList<Double> Rs = new ArrayList<Double>();
 
             
-            boolean logValues = true;
+            boolean logValues = false; // changing 1/29 to false 
 
             int typeSize = typeMutationSamples.size();
             
@@ -811,6 +811,9 @@ public class HostPopulation {
         		if(logValues) {
         			sigmaEffective = Math.log(sigmaEffective);
         		}
+        		
+        		fitDistType.meanSigma = sigmaEffective; // this is supposed to be effective 
+                fitDistType.varSigma = varSigma;
         		//sumSigmas += sigma;
         		//sigmas.add(sigmaEffective);
         		
@@ -856,10 +859,8 @@ public class HostPopulation {
             //    final double sqrDev = Math.pow((sigmas.get(i) - meanSigma),2);
             //    sumSqrDevsSigmas += sqrDev;
            // }
-            //final double varSigma = sumSqrDevsSigmas / typeSize;
-            fitDistType.meanSigma = meanSigma;
-            fitDistType.varSigma = varSigma;
-            
+            // final double varSigma = sumSqrDevsSigmas / typeSize;
+           
             // Compute mean and variance of Rs
             double meanR = sumRs / typeSize;
             double sumSqrDevsR = 0.0;

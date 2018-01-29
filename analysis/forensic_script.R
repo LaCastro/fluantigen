@@ -2,15 +2,14 @@ freq.1.subset %>% select(ratio.varSigma, infected, diversity, antigenicDiversity
                          success,antigentype, name) -> dataPurged
 freq.2.subset %>% select(ratio.varR, individual.varSigma,
                          success, antigentype,name) -> dataPurged
-
 freq.3.subset %>% select(ratio.meanR, varR, ratio.mutation,
                          success, antigentype, name) -> dataPurged
 
 
 growth.1.subset %>% select(ratio.meanR, ratio.mutation,
-                           success, antigentype, name) -> dataPurged
+                           success, antigentype, name, totalI) -> dataPurged
 growth.2.subset %>% select(ratio.meanR, varR, entropy, ratio.varR, day,
-                           success, antigentype, name) -> dataPurged
+                           success, antigentype, name, totalI) -> dataPurged
 accelerate %>% select(ratio.mutation, day, success, antigentype, name) -> dataPurged
 
 dataPurged  <- within(dataPurged, {
@@ -21,8 +20,7 @@ dataPurged  <- within(dataPurged, {
 })
 
 factor.variables = which(sapply(dataPurged,is.factor)==TRUE)
-colnames(dataPurged)[-factor.variables] = 
-  paste0("accel.", colnames(dataPurged)[-factor.variables])
+colnames(dataPurged)[-factor.variables] = paste0("accel.", colnames(dataPurged)[-factor.variables])
 
 freq.1 = dataPurged
 freq.2 = dataPurged
@@ -44,7 +42,7 @@ the.whole.data = bind_rows(freq.1.l, freq.2.l, freq.3.l, diff.2.l, diff.1.l, acc
 combined.data = the.whole.data
 
 
-
+head(combined.data)
 ##########################################################################################
 set.seed(62417)
 folds.length = 5;
@@ -96,19 +94,21 @@ for(n in 1:folds.length) {
 }
       
 
-
-
+    
 forensic.test %>%
   select(name, antigentype, characterization) %>%
   left_join(combined.data) %>% 
+# ggplot(aes( x = characterization, y = diff.2.totalI, color = characterization)) + geom_boxplot() 
   gather(key = variable, value = value, -name, -antigentype, -success,-characterization) %>%
-  ggplot(aes(value, color = characterization, fill = characterization)) +
-  geom_density(alpha = .8) + 
+  ggplot(aes(x = characterization, y = value, color = characterization)) +
+  geom_boxplot(alpha = .8) + 
   scale_fill_manual(values = c("black", "grey"), labels = c("True", "False")) + 
   facet_wrap(~variable, scales = "free") + 
-  scale_color_manual(values = c("black", "grey")) +
+  scale_color_manual(values = c("black", "grey"), labels = c("True", "False")) +
   theme(strip.text = element_text(size = 8)) +
-  labs(y = "Density", x = "Value", fill = "Positive") + guides(color = FALSE) -> forensic.unscaled
+  labs(y = "Density", x = "Value", fill = "Positive") + guides(color = FALSE) 
+
+-> forensic.unscaled
 
 save_plot(forensic.unscaled, filename = "exploratory.figs/forensic.unscaled.pdf",
           base_height = 8, base_aspect_ratio = 2)
@@ -145,4 +145,20 @@ forensic.test %>%
   labs(color = "Positive") ->  freq.3.varR.plot
 
 
+
+qqplot(forensic.test$diff.1.totalI[forensic.test$characterization == "right"],
+       forensic.test$diff.1.totalI[forensic.test$characterization == "wrong"])
+abline(a = 0, b = 1, lty = 3)
+
+ks.test(forensic.test$diff.2.totalI[forensic.test$characterization == "right"],
+        forensic.test$diff.2.totalI[forensic.test$characterization == "wrong"])
+
+
+shapiro.test(forensic.test$diff.1.totalI[forensic.test$characterization == "wrong"])
+
+wilcox.test(diff.1.totalI ~ characterization, data = forensic.test)
+t.test(diff.2.totalI ~ characterization, data = forensic.test)
+
+m <- table(forensic.test$characterization, forensic.test$diff.2.totalI)
+chisq.test(m)
 

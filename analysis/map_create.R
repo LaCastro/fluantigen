@@ -5,8 +5,9 @@ source('loadLibraries.R')
 source('analysis_functions.R')
 source('plotting_functions.R')
 
+
 gather_data_emerge <- function(trial) {
-  
+  browser()
   trial.name = trial$name[1]
   console.file <- read.table(paste0(tropics.folder, trial.name, "/out.console.txt"), header = TRUE, fill = TRUE) %>% clean_console() 
   console.file %>%
@@ -44,6 +45,7 @@ gather_data_emerge <- function(trial) {
   return(trial)
 }
 gather_data_freq <- function(trial, surveillance.freq) {
+  browser()
   trial.name = trial$name[1]
   surv.data = trial %>% select(postAntigen, success, name)
   
@@ -132,22 +134,23 @@ gather_data_freq2 <- function(trial, surveillance.freq) {
   
   # read in and extract from the timeseries 
   timeseries = read.table(paste0(tropics.folder, trial.name, "/out.timeseries.txt"), header = TRUE)
+  
   surv.data = adply(.data = surv.data, .margins = 1, function(surv) {
     timeseries %>%
-      mutate(day.difference = abs(round(date*365)-surv$day)) %>%
-     # filter(date == (surv$day/365)) %>%
+      mutate(day.difference = abs(date - (surv$day/365-5))) %>%
       slice(which.min(day.difference)) %>%
       select(diversity, tmrca, netau, serialInterval, antigenicDiversity, totalS, totalI, totalCases) %>%
       bind_cols(surv) -> surv
     return(surv)
   })
-  
+
   surv.data = find_dominant_types_at_emerge(antigen.frequencies[[eval(trial.name)]]) %>%
     filter(day %in% surv.data$day) %>%
     rename(dominant.type = antigentype,  dominant.freq = frequency) %>%
     ungroup() %>%
     right_join(surv.data, by = "day")
   
+  #### There's a discrepancy here between which totalI I'm pulling in --- 
   track.antigen <- read.table(paste0(tropics.folder, trial.name, "/out.trackAntigenSeries.txt"), header = TRUE)
   track.antigen %>%
     filter(day %in% surv.data$day) %>%
@@ -314,8 +317,9 @@ names(entropy) = trial.dirs
 freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
 freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
 freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .03))
-freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
-freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
+
+#freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
+#freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
 
 freq.list = list(freq.one, freq.two, freq.three)
 
@@ -364,10 +368,10 @@ freq.df.subset %>%
   ungroup() %>%
   mutate_at("name", as.factor) -> diff.df
 
-diff.df %>%
-  select(-first.gp) %>%
-  spread(key = variable, value = second.gp) -> growth.2.subset
 
+diff.df %>%
+  select(-second.gp) %>%
+  spread(key = variable, value = first.gp) -> growth.1.subset
 ################ Step 9: Calculate Acceleration
 diff.df %>%
   mutate(accelerate = second.gp - first.gp) -> diff.df
@@ -375,8 +379,3 @@ diff.df %>%
 diff.df %>%
   select(-first.gp, -second.gp) %>%
   spread(key = variable, value = accelerate) -> accelerate
-
-
-
- 
-

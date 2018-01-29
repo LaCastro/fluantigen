@@ -570,10 +570,15 @@ public class Simulation {
 		ArrayList<Double> meanImmunities = hp.getMeanTypeImmunities(typeList);
 		ArrayList<Double> varImmunities = hp.getVarTypeImmunities(typeList);
 		
+
+	/*	 double currS = getS();
+         double currN = getN();
+         double currSOverN = currS / currN; */ 
+		
 		for (int t = 0; t < typeList.size(); t ++) {
 		
 			ArrayList<Integer> mutationList = mutationLoadDistributions.get(t);
-			double meanSigma = meanImmunities.get(t);
+			double meanSigma = meanImmunities.get(t); // should this be by currSoverN;
 			double varSigma = varImmunities.get(t);
 			//ArrayList<Double> sigmaList = sigmaLoadDistributions.get(t);
 			int type = typeList.get(t);
