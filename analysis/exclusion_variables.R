@@ -79,6 +79,15 @@ vif.excluded = c("freq.2.individual.meanMut", "freq.2.individual.meanBeta", "fre
                  "gp.1.entropy", "gp.1.dominant.freq", "freq.1.entropy", "gp.2.ratio.varR", "accel.antigenicDiversity", "gp.2.antigenicTypes", "gp.1.meanBeta")
 
 
+################################### 
+#### Real World 2/7/18
+
+vif.excluded = c("freq2.diversity", "freq2.antigenicDiversity", "freq2.entropy", "freq2.antigenicTypes",
+                 "freq3.diversity", "freq3.antigenicDiversity", "freq2.infected", "freq2.dominant.freq",
+                 "freq3.entropy", "freq2.meanR", "freq3.antigenicTypes", "freq1.antigenicTypes", "freq2.totalI",
+                 "freq2.totalS", "freq3.dominant.freq", "freq2.tmrca", "freq3.infected", "gp1.infected",
+                 "gp1.antigenicTypes", "accel.antigenicDiversity", "gp1.diversity", "gp1.dominant.freq",
+                 "freq1.dominant.freq", "gp1.entropy", "freq1.meanR", "gp1.meanR", "gp2.antigenicTypes")
 
 
 #########################################################################

@@ -6,7 +6,7 @@ input.data = read.csv("~/Dropbox/current_fluantigen/model_csvs/lower.vif.prop.cs
 
 ############# Poster Scripts 
 freq.1.subset %>%
-  select(success, name,  antigentype, varR, ratio.varSigma, meanR, individual.varSigma) %>%
+  select(success, name,  antigentype, ratio.meanR, meanR, individual.varSigma, varR, ratio.varSigma) %>%
   #  mutate_if(is.numeric, scale) %>%
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq1") %>%
@@ -18,19 +18,19 @@ freq.2.subset %>%
   mutate(time.point = "freq2") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.2.variables
 freq.3.subset %>%
-  select(success, name, antigentype, ratio.meanR, varR, varBeta, ratio.mutation, meanR) %>%
+  select(success, name, antigentype, varR, ratio.varBeta,ratio.mutation) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "freq3") %>%
   mutate(id = paste0(variable, "_", time.point)) -> freq.3.variables
 growth.1.subset %>%
-  select(success, name, antigentype, meanSigma, individual.meanSigma) %>%
+  select(success, name, antigentype, ratio.meanBeta, individual.meanSigma, meanSigma) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.1") %>%
   mutate(id = paste0(variable, "_", time.point)) -> gp.1.variables
 growth.2.subset %>%
-  select(success, name, antigentype, entropy, day, individual.meanSigma, meanSigma) %>%
+  select(success, name, antigentype,individual.meanMut, individual.meanSigma, meanSigma,entropy, day) %>%
   #  mutate_if(is.numeric, scale)  %>% 
   gather(key = variable, value = value, -success, -antigentype, -name) %>%
   mutate(time.point = "gp.2") %>%
@@ -53,11 +53,10 @@ all.variables = rbind(freq.1.variables, freq.2.variables, freq.3.variables,
 #                                                       "ratio.varR_gp.2", "individual.varSigma_freq2", "day_accel", "diversity_freq1", 
 #                                                       "antigenicDiversity_freq1", "varR_gp.2"))
 
-all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq3", "varR_freq3", "individual.meanSigma_gp.2",
-                                                       "meanSigma_gp.2", "individual.varSigma_freq1", "entropy_gp.2", "individual.meanSigma_gp.1",
-                                                       "antigenicTypes_freq2", "ratio.varBeta_freq3", "ratio.mutation_freq3", "day_gp.2",
-                                                       "meanSigma_gp.1", "ratio.varSigma_freq1", "meanR_freq1", "tmrca_freq1", "varR_freq1", "day_accel"))
-
+all.variables$id = factor(all.variables$id, levels = c("ratio.meanR_freq1", "ratio.meanBeta_gp.1", "varR_freq3", "individual.meanSigma_gp.1",
+                                                       "meanSigma_gp.1", "individual.meanMut_gp.2", "individual.meanSigma_gp.2", "meanR_freq1",
+                                                       "individual.varSigma_freq1", "meanSigma_gp.2", "ratio.varBeta_freq3", "entropy_gp.2", 
+                                                       "varR_freq1", "ratio.mutation_freq3", "day_gp.2", "ratio.varSigma_freq1", "day_accel"))
 
 ########## Figure 4 A 
 fill = "rel.freq"
@@ -94,28 +93,45 @@ cut_data <- function(data, variables, type, bins) {
   return(return.data)
 }
 
-variable.1 = "ratio.meanR_freq3"; variable.2 = "varR_freq3"
+variable.1 = "ratio.meanR_freq1"; variable.2 = "ratio.meanBeta_gp.1"
 variables = c(variable.1, variable.2)
 
-variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
-variable.name.2 = expression(paste("Variance in Population ", italic("R")))
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 1%")) 
+variable.name.2 = "Change in Relative Beta: 1-2% "
 
 est.data = cut_data(all.variables, variables, type = "Est.", bins = 15)
 transient.data = cut_data(all.variables, variables, type = "Transient", bins = 15)
                                    
 est.data %>%
-  ggplot(aes(x = ratio.meanR_freq3, y = varR_freq3, z = rel.freq)) + stat_summary_hex(fun = mean, bins = 40)  + 
+  ggplot(aes(x = ratio.meanR_freq1, y = ratio.meanBeta_gp.1, z = rel.freq)) + stat_summary_hex(fun = mean, bins = 40)  + 
   scale_fill_viridis(option="plasma") + labs(x = variable.name.1, y  = variable.name.2, fill = "Prop. \n Successful") +
-  geom_point(data = transient.data, aes(x = ratio.meanR_freq3, y = varR_freq3), color = "grey", alpha = .5) + 
+  geom_point(data = transient.data, aes(x = ratio.meanR_freq1, y =ratio.meanBeta_gp.1), color = "grey", alpha = .5) + 
   theme(legend.position = "none") -> one.vs.two
 
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
 
+color = "success"
+
+data.set %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+  #  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success), geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) +  
+  geom_smooth(method="lm") + #, formula = y~s(x)) + 
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> lm.set1
+
+  
 ################### Figure 4 B #################################
-variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.meanSigma_gp.2" 
+variable.1 = "ratio.meanR_freq1"; variable.2 = "varR_freq3" 
 variables = c(variable.1, variable.2)
+fill = "rel.freq"
 
-variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
-variable.name.2 = expression(paste("Susceptibility to Antigen: 2-3%"))
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 1%")) 
+variable.name.2 = expression(paste("Var. in", italic("R"), ": 3%"))
 
 est.data = cut_data(all.variables, variables, type = "Est.", bins = 15)
 transient.data = cut_data(all.variables, variables, type = "Transient", bins = 15)
@@ -126,12 +142,33 @@ est.data %>%
   geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) + 
   theme(legend.position = "none") -> one.vs.three
 
+
+
+########
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+color = "success"
+
+data.set %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+  #  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success), geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) +  
+  geom_smooth(method="gam",  formula = y~s(x)) + 
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> gam.set2
+
+
+
 ##################### Figure 4 C ################################
-variable.1 = "ratio.meanR_freq3"; variable.2 = "meanSigma_gp.2"
+variable.1 = "ratio.meanR_freq1"; variable.2 = "individual.meanSigma_gp.1"
 variables = c(variable.1, variable.2)
 
-variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
-variable.name.2 = expression(paste("Population Susceptibility : 2%"))
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 1%")) 
+variable.name.2 = expression(paste("Suscept. focal clade : 1-2%"))
 
 est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
 transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
@@ -142,13 +179,33 @@ est.data %>%
   geom_point(data = transient.data, aes_string(x = variable.1, y = variable.2), color = "grey", alpha = .5) + 
   theme(legend.position = "none") -> one.vs.four
 
+
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+color = "success"
+
+data.set %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+  #  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success), geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) +  
+  geom_smooth(method="lm" ) +#,  formula = y~s(x, k = 3)) + 
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> lm.set3
+
+
+
+
 ##################### Figure 4 D ################################
 
-variable.1 = "ratio.meanR_freq3"; variable.2 = "individual.varSigma_freq1"
+variable.1 = "ratio.meanR_freq1"; variable.2 = "meanSigma_gp.1"
 variables = c(variable.1, variable.2)
 
-variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
-variable.name.2 = expression(paste("Susceptibility to Angtigen (Var) : 1%"))
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 1%")) 
+variable.name.2 = expression(paste("Susceptibility: 1-2%"))
 
 est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
 transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
@@ -160,12 +217,34 @@ est.data %>%
   theme(legend.position = "none") -> one.vs.five
 
 
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+color = "success"
+
+data.set %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+  #  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success), geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) +  
+  geom_smooth(method="gam", formula = y~s(x)) + 
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> gam.set4
+
+
+
+
+
+
+
 ##################### Figure 4 E  ################################
-variable.1 = "ratio.meanR_freq3"; variable.2 = "entropy_gp.2"
+variable.1 = "ratio.meanR_freq1"; variable.2 = "individual.meanMut_gp.2"
 variables = c(variable.1, variable.2)
 
-variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 3%")) 
-variable.name.2 = expression(paste("Change in ", italic("H"),  ":2-3%"))
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 1%")) 
+variable.name.2 = expression(paste("Clade Mutational Load: 2-3%"))
 
 est.data = cut_data(all.variables, variables, type = "Est.", bins = 20)
 transient.data = cut_data(all.variables, variables, type = "Transient", bins = 20)
@@ -177,14 +256,40 @@ est.data %>%
 one.vs.six.b = one.vs.six + theme(legend.position = "none")
 
 legend <- get_legend(one.vs.six)
-plots <- align_plots(one.vs.two, one.vs.three, one.vs.four, one.vs.five, one.vs.six.b, align = "v", axis = "l")
+plots <- align_plots(one.vs.two, one.vs.three, one.vs.four, one.vs.five, one.vs.six.b, align = "v")
 
 bottom.row = plot_grid(plots[[4]], plots[[5]], legend, nrow = 1)
 first.row = plot_grid(plots[[1]], plots[[2]], plots[[3]], nrow = 1)
 
 final.plot = plot_grid(first.row, bottom.row, ncol = 1)
-save_plot(final.plot, filename = "exploratory.figs/modulation.variables.pdf", base_height = 8, base_aspect_ratio = 2)
+save_plot(final.plot, filename = "exploratory.figs/modulation.variables2.pdf", base_height = 8, base_aspect_ratio = 2)
 
+all.variables %>%
+  filter(id %in%variables) %>%
+  select(success,name,antigentype,id,value) %>%
+  spread(key = id, value = value) -> data.set
+
+color = "success"
+data.set %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+#  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success), geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) +  
+  geom_smooth(method="lm") +  
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> lm.set5
+
+
+#### Linear Model 
+lm.plots <- align_plots(lm.set1, lm.set2, lm.set3, lm.set4, lm.set5, align = "v")
+gam.plots <- align_plots(gam.set1, gam.set2, gam.set3, gam.set4, gam.set5, align="v")
+
+
+lm.grid = plot_grid(plots[[1]], plots[[2]], plots[[3]], plots[[4]], plots[[5]])
+gam.grid = plot_grid(gam.plots[[1]], gam.plots[[2]], gam.plots[[3]], gam.plots[[4]], gam.plots[[5]])
+
+save_plot(lm.grid, filename = "exploratory.figs/lm.grid.pdf", base_height = 8, base_aspect_ratio = 2)
+save_plot(gam.grid, filename = "exploratory.figs/gam.grid.pdf", base_height = 8, base_aspect_ratio = 2)
 ################################ Figure 1 -- Full Overview 
 timeseries = map(trial.dirs, function(x) read.table(paste0(tropics.folder,x,"/out.timeSeries.txt"), header = TRUE))
 timeseries[[5]] %>%
@@ -268,29 +373,31 @@ save_plot(filename = "exploratory.figs/poster.summary1.pdf", plot = poster.summa
 ############################ Rank Figure 
 ########## Model Peformance
 ################################## Comparing Model Performances
-full.model = read.csv("~/Dropbox/current_fluantigen/model_csvs/transient.03.csv")
-pop.model = read.csv("~/Dropbox/current_fluantigen/model_csvs/trans03.poplevel.csv")
-pop.3.model = read.csv("~/Dropbox/current_fluantigen/model_csvs/trans03.popleve3only.csv")
+full.model = read.csv("../results/12918single.term.vifsecond.csv")
+real.world = read.csv("../results/020718realworld.csv")
+real.world.3 = read.csv("../results/020718realworld.3.csv")
 
+head(full.model)
 full.model %>%
-  select(term.type, variable, time.1, per) %>%
-  filter(term.type == "single") %>%
-  mutate(model = "full") -> full.model.sub
-pop.model %>%
-  select(term.type, variable, time.1, per) %>%
-  filter(term.type == "single") %>%
-  mutate(model = "pop") -> pop.model.sub
-pop.3.model %>%
-  select(term.type, variable, time.1, per) %>%
-  mutate(model = "pop.3") -> pop.3.model
+  select(X, variable, time, per) %>%
+  #filter(term.type == "single") %>%
+  mutate(model = "complete") -> complete.model.sub
+real.world %>%
+  select(X, variable, time, per) %>%
+ # filter(term.type == "single") %>%
+  mutate(model = "real.world") -> real.world.sub
+real.world.3 %>%
+  select(X, variable, per) %>%
+  mutate(time = "freq.3") %>%
+  mutate(model = "rw.3") -> rw.3.sub
 
-combined.models = rbind(full.model.sub, pop.model.sub, pop.3.model)
-combined.models %>%
-  group_by(model) %>%
-  mutate(rank = row_number()) -> combined.models
+combined.models = rbind(complete.model.sub, real.world.sub, rw.3.sub)
+#combined.models %>%
+#  group_by(model) %>%
+#  mutate(rank = row_number()) -> combined.models
 
 combined.models %>%
-  ggplot(aes(rank, per, color = model, group = model)) + geom_line(size = 2) +
+  ggplot(aes(X, per, color = model, group = model)) + geom_line(size = 2) +
   scale_color_manual(values = c("purple", "orange", "grey"),
                      labels = c("Complete", "Real World", "Real World: 3%")) +
   scale_x_continuous(breaks = seq(1,18,2)) + labs(x = "Model Term", y = "Average AUC", color = "") +
@@ -299,12 +406,12 @@ combined.models %>%
   theme(axis.text = element_text(size = 14), text = element_text(size  = 14)) -> model.performance
 
 
-roc.full = read.csv("~/Dropbox/current_fluantigen/model_csvs/roc.trans.03.csv")
-roc.03.pop3 = read.csv("~/Dropbox/current_fluantigen/model_csvs/roc.t03.poplevel.csv") 
-roc.pop = read.csv("~/Dropbox/current_fluantigen/model_csvs/roc.transpop.03.csv") 
+roc.full = read.csv("~/Dropbox/current_fluantigen/model_csvs/redo.pop.csv")
+roc.realworld = read.csv("~/Dropbox/current_fluantigen/model_csvs/realworld.roc.csv") 
+roc.pop = read.csv("~/Dropbox/current_fluantigen/model_csvs/realworld3.roc.csv") 
 
 combined.roc = rbind(data.frame(model = "full", roc.full),
-                     data.frame(model = "pop.3", roc.03.pop3),
+                     data.frame(model = "pop.3", roc.realworld),
                      data.frame(model = "pop", roc.pop))
 
 combined.roc %>%
@@ -315,6 +422,8 @@ combined.roc %>%
   guides(color = FALSE) + 
   theme(axis.text = element_text(size = 14), text = element_text(size  = 14)) +
   scale_y_continuous(breaks = seq(0,1,.2)) + scale_x_continuous(breaks = seq(0,1,.2)) -> model.roc
+
+save_plot(filename = "~/Dropbox/current_fluantigen/model_plots/model.performance0207.pdf",plot = model.performance, base_aspect_ratio = 1.8)
 
 #########
 results.03 = read.csv("~/Dropbox/current_fluantigen/model_csvs/transient.03.csv")
@@ -330,25 +439,26 @@ results.03.pop %>%
 results.03.freq.3 %>%
   filter(term.type == "single") -> results.03.freq.3
 
-compare.results = rbind(data.frame(model = "pop", results.03.pop),
-                         data.frame(model = "full", results.03),
-                         data.frame(model = "pop.3", results.03.freq.3))
-compare.results %>%
-  group_by(model) %>%
-  mutate(rank = row_number()) -> compare.results.rank
-my.colors = colorRampPalette(brewer.pal(8, "YlOrRd"))(max(compare.results.rank$rank))
-compare.results.rank$variable = factor(compare.results.rank$variable, 
-                                       levels = rev(c("ratio.meanR", "varR", "ratio.mutation", "entropy", "ratio.varR", 
-                                                      "ratio.varSigma", "infected", "day", "meanR", "individual.varSigma", "diversity", 
-                                                      "antigenicDiversity")),
-                                       labels = rev(c("Rel. R Advantage", "Pop. R (Var.)", "Rel.Deleterious Mutation Load", "Shannon's Diversity", 
-                                                  "Rel. R Advantage (Var.)", "Rel. Susceptibility (Var.)", "Prevalence", "Days", "Pop. R",
-                                                  "Focal Antigen Susceptibility (Var.)", "Diversity", "Antigenic Diversity")))
-compare.results.rank$time.1 = factor(compare.results.rank$time.1, levels = c("freq.1", "freq.2", "freq.3", "gp.1","gp.2", "accel"))
-compare.results.rank$model = factor(compare.results.rank$model, levels = c("full", "pop", "pop.3" ),labels = c("Complete", "Real World", "Real World: 3%"))
-compare.results.rank %>% 
+#compare.results = rbind(data.frame(model = "pop", results.03.pop),
+#                         data.frame(model = "full", results.03),
+#                         data.frame(model = "pop.3", results.03.freq.3))
+
+combined.models = rbind(complete.model.sub, real.world.sub, rw.3.sub)
+
+colnames(combined.models)[1] = "rank"
+my.colors = colorRampPalette(brewer.pal(8, "YlOrRd"))(max(combined.models$rank))
+combined.models$variable = factor(combined.models$variable, 
+                                       levels = rev(c("ratio.meanR", "ratio.meanBeta", "varR", "individual.meanSigma", "meanSigma",
+                                                      "individual.meanMut", "meanR", "individual.varSigma", "ratio.varBeta", "entropy",
+                                                      "ratio.mutation", "day", "ratio.varSigma", "infected")),
+                                       labels = rev(c("Rel. R", "Rel. Transmissibility", "Pop. R (Var.)", "Susceptibility to Focal Clade", "Mean Susceptibility", 
+                                                  "Focal Mutation Load", "Population R", "(Var.) Susceptibility to Focal Clade", "Rel. in Variance of Transmissibility",
+                                                  "Shannon's Entropy", "Rel. Mutation Load", "Growth Period (days)", "Rel. Variance in Susceptibility",  "Infecteds")))
+combined.models$time = factor(combined.models$time, levels = c("freq.1", "freq.2", "freq.3", "gp.1","gp.2", "accel"))
+combined.models$model = factor(combined.models$model, levels = c("complete", "real.world", "rw.3" ), labels = c("Complete", "Real World", "Real World: 3%"))
+combined.models %>% 
   #filter(model == "full") %>%
-  ggplot(aes(x = time.1, y = variable, fill = as.factor(rank))) + geom_tile() +
+  ggplot(aes(x = time, y = variable, fill = as.factor(rank))) + geom_tile() +
   scale_fill_manual(values = rev(my.colors)) + 
   facet_wrap(~model) + 
   labs(x = "Data Time Point", y = "", fill = "Term Order") +
@@ -361,6 +471,9 @@ compare.results.rank %>%
 
 second.row = plot_grid(model.performance, model.roc, rel_widths = c(1.2, 1), labels = "AUTO")
 combined.rank.plot = plot_grid(second.row, rank.compare.plot, ncol = 1 , rel_heights = c(.7, 1), labels = c("", "C"))
+
+
+save_plot(rank.compare.plot, filename = "~/Dropbox/current_fluantigen/model_plots/rank.compare.plot.pdf",base_height = 6 , base_aspect_ratio = 2.5)
 save_plot(combined.rank.plot, filename = "exploratory.figs/combined.rank.plot.pdf", base_height = 9, base_aspect_ratio = 1.8)
 
 

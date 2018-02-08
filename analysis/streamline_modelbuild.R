@@ -79,9 +79,8 @@ while(build == TRUE) {
       build = FALSE
     }
 }
- single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
-
-write.csv(single.term.results, '../results/single.term.03.vifsecond.csv')
+single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
+write.csv(single.term.results, '../results/020718realworld.3.csv')
 
 
 ############## STEP TWO: Interactions 
@@ -170,10 +169,27 @@ calculate_SenSpec(glmer.probs, testdata)
 
 
 #####################
-trans.pop3 = data.frame(cbind(sen = glmer.ROC$sensitivities,
+redo.pop = data.frame(cbind(sen = glmer.ROC$sensitivities,
                               spec = glmer.ROC$specificities,
                               thres = glmer.ROC$thresholds))
-write.csv(trans.03, "~/Dropbox/current_fluantigen/model_csvs/single.term.roc.vif2.csv")
+write.csv(redo.pop, "~/Dropbox/current_fluantigen/model_csvs/realworld3.roc.csv")
+
+redo.pop %>%
+  mutate(false.pos = 1-spec) %>%
+  ggplot(aes(x = false.pos, y = sen)) + geom_line(size = 2) +
+  labs(x = "False Positive Rate", y = "True Positive Rate") -> new.perf
+save_plot(new.perf, filename = "exploratory.figs/new.perf.pdf")
+
+
+######## New performance
+single.term.results %>%
+  mutate(id = row_number()) %>%
+  ggplot(aes(x = id, y = per)) + geom_line(size =2 ) + 
+  labs(x = "# of Model Terms", y = "Average AUC") +
+  scale_y_continuous(breaks = seq(from = .55, to =  .95, by = .05), limits = c(.55, .95)) +
+  scale_x_continuous(breaks = seq(from = 1, to = 16, by = 2)) -> new.auc
+
+save_plot(new.auc, filename = "exploratory.figs/new.auc.pdf")
 
 
 trans.pop3 %>%
