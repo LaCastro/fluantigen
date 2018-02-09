@@ -262,6 +262,10 @@ calculate_total_life_id <- function(antigen.frequencies) {
     dplyr::select(.id,antigentype, life.length)
 }
 
+
+
+
+
 calculate_total_life <- function(antigen.frequencies) {
  antigen.frequencies %>%
     group_by(antigentype) %>%
@@ -272,6 +276,7 @@ calculate_total_life <- function(antigen.frequencies) {
     mutate(life.length = ifelse(is.na(last.day), 0, last.day-day.emerge)) %>%
     dplyr::select(antigentype, life.length)
 }
+
 
 calculate_days_above_thres <- function(antigen.frequencies, threshold) {
  # Calculates the number of days an antigen type is present above a certain frequency

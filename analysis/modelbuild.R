@@ -7,6 +7,7 @@ library(pROC)
 library(caret)
 library(cvTools)
 library(cowplot)
+library(data.table)
 #################################################################
 full.level = c("totalS", "infected", "antigenicTypes", "entropy", "diversity", "antigenicDiversity", "tmrca",
                "dominant.freq", "serialInterval", "meanR")
@@ -29,7 +30,7 @@ pop.level = c("day", "entropy","infected", "diversity", "antigenicDiversity", "a
 freq.df.subset %>%
   filter(freq == "freq.02") -> freq.2.subset
 
-data = freq.3.subset
+data = freq.df.subset
 
 data  <- within(data, {
   success <- factor(success) #, levels=c("Est.", "Transient"))
@@ -38,40 +39,38 @@ data  <- within(data, {
   antigentype <- as.factor(antigentype)
 })
  
-#dataScaled = data %>% select(-simDay, -netau, -infected) %>%
+dataScaled = data %>% select(-simDay, -netau, -infected, -day, -freq) %>%
+  mutate_if(is.numeric, scale) # Snap shot 
+#dataScaled = data %>% select(success, name,  -day) %>%
 #  mutate_if(is.numeric, scale)# Snap shot 
-dataScaled = data %>% select(success, name, antigentype, one_of(pop.level), -day) %>%
-  mutate_if(is.numeric, scale)# Snap shot 
-dataPurged = dataScaled
 
 ########## Fit first model 
-trial.all <- glmer(success ~.-name-antigentype + (1| name), data = dataScaled, family = binomial,
-                   control = glmerControl(optimizer="bobyqa"),nAGQ=0)
-vif.results = data.frame(vif.mer(trial.all))
-View(vif.results)
 
-# Snap Shot 
-vif.excluded = c("antigenicTypes", "dominant.freq")
-#vif.excluded = c("individual.meanMut", "individual.varMut", "individual.meanBeta", "individual.meanR", "individual.meanSigma",
-#                 "ratio.meanSigma", "meanSigma", "covBetaSigma", "meanBeta", "individual.varR", "individual.varBeta", "antigenicTypes",
-#                 "ratio.varR")
+select_variables <- function(data.set, data.names) {
+  colinear = TRUE
+  vif.excluded = vector()
+  while(colinear == TRUE) { 
+    trial.all <- glmer(success ~.-name-antigentype + (1| name), data = data.set, family = binomial,
+                       control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+    vif.results = data.frame(vif.mer(trial.all))
+    setDT(vif.results, keep.rownames = TRUE)
+    candidate.row = vif.results %>% 
+      arrange(desc(vif.mer.trial.all.)) %>% 
+      slice(1)
+    
+    if(candidate.row$vif.mer.trial.all. > 5) {
+      vif.excluded = c(vif.excluded, candidate.row$rn)
+      data.set =  data.set[,-which(colnames(data.set) %in% vif.excluded)]
+    } else {
+      colinear = FALSE
+    }
+  }
+  return(list(data = data.set, excluded.variables = vif.excluded))
+}
+eliminated.vif = select_variables(dataScaled, colnames(dataScaled))
 
-# 1/22/
-#vif.excluded = c("individual.meanMut", "individual.varMut", "individual.meanBeta", "individual.meanR", "individual.meanSigma",
-#                 "ratio.meanSigma", "meanSigma", "covBetaSigma", "meanBeta", "individual.varR", "individual.varBeta", "ratio.varR")
-
-# 1/22/ Growth 
-#vif.excluded = c("individual.meanMut", "individual.varBeta", "individual.varR", "ratio.meanR", "meanR", "ratio.meanBeta",
-#                 "individual.meanR", "ratio.meanSigma", "varSigma", "individual.varMut")
-
-#dataPurged = dataScaled[,-which(colnames(dataScaled) %in% vif.excluded)]
-#trial.purged <- lme4::glmer(success ~.-name-antigentype + (1 | name), data = dataPurged, family = binomial,
-#                   control = glmerControl(optimizer="bobyqa"),nAGQ=0)
-#vif.results = data.frame(vif.mer(trial.purged))
-#View(vif.results)
-#vif.results %>% arrange(desc(vif.mer.trial.purged.)) %>% head()
-#colnames(dataScaled)[which(!colnames(dataScaled) %in% colnames(dataPurged))]
-
+eliminated.variables = eliminated.vif[[2]]
+dataPurged = eliminated.vif[[1]] %>% select(-antigentype)
 
 ################# Combing multiple time point data sets 
 factor.variables = which(sapply(dataPurged,is.factor)==TRUE)

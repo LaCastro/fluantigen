@@ -12,6 +12,8 @@ build = TRUE
 variable.list = c()
 variable.per = c()
 variable.aic = c()
+variable.min.per = c()
+variable.max.per = c()
 anova.results = rep(0, folds.length)
 
 fixed.part.1 = "success ~ value + "
@@ -60,27 +62,75 @@ while(build == TRUE) {
     }
     anova.mean = mean(anova.results)
     performance=mean(glmerperf)
+    min.perf = min(glmerperf)
+    max.perf = max(glmerperf)
     data.summary = colMeans(as.data.frame(data.summary.mat))
-    return(t(c(per = performance, data.summary, anova = anova.mean)))
+    return(t(c(per = performance, min.perf = min.perf, max.perf = max.perf, data.summary, anova = anova.mean)))# put the se of the performance 
   })
   variable = model.results %>% arrange(AIC) %>% slice(1)  # Select the variable that is the best 
   if(length(variable.list) == 0 ) { # Is this the first? If yes, add this variable
     variable.list = c(variable.list, variable$variable)
     variable.per = c(variable.per, variable$per)
     variable.aic = c(variable.aic, variable$AIC)
+    variable.max.per = c(variable.max.per, variable$max.perf)
+    variable.min.per = c(variable.min.per, variable$min.perf)
     print(paste0("Adding : ", variable$variable))
   } else if (variable$anova < .05) { # Determine if this new variable beats the null
       variable.list = c(variable.list, variable$variable)
       variable.per = c(variable.per, variable$per)
+      variable.max.per = c(variable.max.per, variable$max.perf)
+      variable.min.per = c(variable.min.per, variable$min.perf)
       variable.aic = c(variable.aic, variable$AIC)
+      
       print(paste0("Adding : ", variable$variable))
     } else { 
       print(paste0("Final Single Term Model is: ", formula.null))
       build = FALSE
     }
 }
-single.term.results = bind_cols(variable = variable.list, per =  variable.per, aic = variable.aic)
-write.csv(single.term.results, '../results/020718realworld.3.csv')
+
+
+single.term.results = bind_cols(variable = variable.list, per =  variable.per, max.per = variable.max.per, min.per = variable.min.per, aic = variable.aic)
+write.csv(single.term.results, '../results/020918complete.1.csv', row.names = FALSE)
+
+roc = NULL
+for(n in 1:folds.length) { 
+  test.ids = folds$subsets[folds$which==n]
+  test.trials = unique(data.scaled.l$name)[test.ids]
+  testdata = dataPurged[which(dataPurged$name %in% test.trials), ]
+  traindata = dataPurged[-which(dataPurged$name %in% test.trials),]
+  GLMER <- lme4::glmer(formula.null, data = traindata, family="binomial", 
+                     control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+  data.summary.mat[n,] = c(glance(GLMER)[3], tidy(GLMER)[2,5])
+  glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+  glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+  
+  roc.values = data.frame(cbind(sen = glmer.ROC$sensitivities,
+                                spec = glmer.ROC$specificities,
+                                thres = glmer.ROC$thresholds))
+  roc.values %<>% mutate(fold = n)
+  roc = rbind(roc, roc.values)
+}
+write.csv(roc, "../results/020918complete.roc.1.csv", row.names = FALSE)
+
+
+
+
+############# Distribution of Time Advance
+subset.analyze %>% 
+  select(day.success, success, antigentype, name) -> subset.calculate.day 
+
+freq.one %>%
+  select(success, antigentype, name, day) %>%
+  left_join(subset.calculate.day) %>% 
+  filter(success == "Est." & day != 1833) %>%
+  mutate(lead.time = day.success - day)  -> lead.data
+
+lead.data %<>% mutate(freq = 1)
+
+
+
+
 
 
 ############## STEP TWO: Interactions 
@@ -153,6 +203,8 @@ full.model = rbind(single.term.results , interaction.term.results)
 full.model.results = full_join(full.model, coefficient.estimates, by = c("variable" = "term"))
 
 write.csv(full.model.results, '../results/transient.03poplevel.csv')
+
+
 
 
 ################################ Looking at ROC 

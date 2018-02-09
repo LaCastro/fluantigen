@@ -532,3 +532,61 @@ data.set %>%
   geom_point(alpha = .8) + scale_color_viridis(option="plasma") + 
   facet_wrap(~success)
 
+
+
+######################################## Trying new 
+
+perfSummary = read.csv("~/Dropbox/current_fluantigen/model_csvs/term/12918single.term.vifsecond.csv")
+perfSummary.rw = read.csv("~/Dropbox/current_fluantigen/model_csvs/term/020718realworld.csv")
+
+perfSummary$variable = factor(perfSummary$variable,
+                              levels = rev(c("ratio.meanR", "ratio.meanBeta", "varR", 
+                                                               "individual.meanSigma", "meanSigma","individual.meanMut",
+                                                               "meanR", "individual.varSigma",  "ratio.varBeta", 
+                                                               "entropy","ratio.mutation", "day","ratio.varSigma")),
+                              labels = rev(c("Rel. Effective R", "Rel. Transmissibility", "Var. Pop. Effective R",
+                                           "Clade Cross-Immunity", "Pop Immunity Level", "Clade Deleterious Load",
+                                           "Pop. Effective R", "Var. Clade Cross-Immunity", "Rel. Var. Transmissibility",
+                                           "Entropy", "Rel. Deleterious Load", "Growth Rate (Days)", "Rel. Var. Cross Immunity"))) 
+
+perfSummary$time = factor(perfSummary$time,
+                          labels = c("RF 1%", "EGP 1", "RF 3%", "EGP 2", "Diff EGP"))
+perfSummary %>%
+  filter(X <= 6) %>%
+  ggplot(aes(x=per, y = variable, color = X, label = time)) + 
+  scale_color_viridis(option = "A") + geom_point(size = 3) + 
+  labs(x = "Average AUC", y = "", color = "Term") + 
+  geom_text(hjust = 0, nudge_x = 0.002, color = "black") +
+  guides(color = guide_colorbar(reverse = TRUE)) +
+  scale_x_continuous(breaks = seq(0.8, .94, .02), limits = c(.8, .95)) +
+  theme(legend.position = c(.8,.7))
+
+################ Combine 
+perfSummary %<>% mutate(model = "complete")
+perfSummary.rw %<>% mutate(model = "real.world")
+
+model.combined = rbind(perfSummary, perfSummary.rw)
+model.combined$variable = factor(model.combined$variable,
+                                 levels = rev(c("ratio.meanR", "ratio.meanBeta", "varR", 
+                                                                   "individual.meanSigma", "meanSigma","individual.meanMut",
+                                                                   "individual.varSigma",  "ratio.varBeta", "ratio.mutation",
+                                                                   "day", "infected", "entropy", "meanR", "ratio.varSigma")),
+                              labels =  rev(c("Rel. Effective R", "Rel. Transmissibility", "Var. Pop. Effective R",
+                                       "Clade Cross-Immunity", "Pop Cross-Immunity Level", "Clade Deleterious Load",
+                                      "Var. Clade Cross-Immunity", "Rel. Var. Transmissibility", "Rel. Deleterious Load",
+                                      "Growth Rate (Days)", "Infecteds",  "Entropy",  "Pop. Effective R", "Rel. Var. Cross Immunity"))) 
+
+model.combined$time = factor(model.combined$time, levels = c("freq.1", "gp.1", "freq.3", "gp.2", "accel"),
+       labels = c("RF 1%", "EGP 1", "RF 3%", "EGP 2", "Diff EGP"))
+
+model.combined %>%
+  filter(X <= 6) %>%
+  ggplot(aes(x=per, y = variable, label = time, shape = model, color = X)) + 
+  scale_color_viridis(option = "A", begin = 0, end = .8) + geom_point(size = 5) + 
+  labs(x = "Average AUC", y = "", color = "Term", shape = "Scenario") + 
+  geom_text(hjust = 0, nudge_x = 0.006, color = "black", check_overlap = TRUE) +
+  guides(color = guide_colorbar(reverse = TRUE)) + 
+  scale_x_continuous(breaks = seq(0.65, .95, .05), limits = c(.65, .95)) -> model.performance.plot
+model.performance.plot  
+save_plot(filename = "exploratory.figs/model.performance.newplot.pdf", model.performance.plot, base_height = 8, base_aspect_ratio = 1.5)
+  

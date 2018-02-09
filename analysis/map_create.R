@@ -180,7 +180,7 @@ calculate_days_above <- function(antigen.frequencies, threshold) {
               frequency.emerge = frequency[1],
               frequency.down = tail(frequency)[1]) %>%
     mutate(days = last.day-day.emerge) %>%
-    dplyr::select(antigentype, days) %>%
+    dplyr::select(antigentype, days, day.emerge) %>%
     mutate_at("antigentype", as.character) 
 }
 replace_na_zeros = function(x) {
@@ -189,10 +189,11 @@ replace_na_zeros = function(x) {
   x$days[already_lost] = 0
   return(x)
 }
-determine_success_labels = function(x) {
+determine_success_labels = function(x, max.rf) {
   x %>%
     mutate(success = ifelse(days > 45, "Est.", 
-                            ifelse(final.max > .03, "Transient", "no")))
+                            ifelse(final.max > max.rf, "Transient", "no"))) %>%
+    mutate(day.success = ifelse(success == "Est.", day.emerge + 45,  NA))
 }
 filter_out_loss = function(x) {
   x %>%
@@ -276,18 +277,18 @@ names(antigen.frequencies) = trial.dirs
 ######## Step 2: For each list entry need to calculate max frequency and days above
 thres = .2
 
-# Calculating the two criteria for determining success 
+# Calculating the two criteria for determining success and if successful how long was it there 
+antigen.frequencies %>%
+  map(function(x) calculate_days_above(x, threshold = .2)) -> days.above
+
 antigen.frequencies %>%
   map(find_max_frequency) %>%
   map(function(x) mutate_at(x, "antigentype", as.character)) -> max.frequencies
 
-antigen.frequencies %>%
-  map(function(x) calculate_days_above(x,threshold = .2)) -> days.above
-
 # Creating the combined data frame and using the criteria to assign a label 
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
-  map(determine_success_labels)
+  map(determine_success_labels, max.rf =  .01)
 rm(max.frequencies, days.above)
 
 ####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
@@ -315,13 +316,13 @@ names(entropy) = trial.dirs
 
 ####### Step 5: Create Meta Data at different time points
 freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
-freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
-freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .03))
-
+#freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
+#freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .03))
 #freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
 #freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
 
-freq.list = list(freq.one, freq.two, freq.three)
+freq.list = list(freq.one)
+
 
 ######## Step 6: Remove extra rows 
 freq.list = map(freq.list, remove_columns)
@@ -331,7 +332,8 @@ freq.list.ratio = map(freq.list, calculate_ratios)
 
 ###### Step 8: Calculate Difference Data Sets 
 freq.df =  do.call("rbind", freq.list.ratio)
-freq.df$freq = rep(c("freq.01", "freq.02", "freq.03"), sapply(freq.list.ratio, nrow))
+freq.df$freq = rep(c("freq.01"), sapply(freq.list.ratio, nrow))
+#freq.df$freq = rep(c("freq.01", "freq.02", "freq.03"), sapply(freq.list.ratio, nrow))
 
 #### Step 8.5 - remove those that span  the burn in period 
 freq.df %>%
