@@ -95,9 +95,20 @@ eliminated.variables = c("individual.meanMut", "individual.varMut", "individual.
                          "individual.meanSigma", "ratio.meanSigma",  "meanSigma",   "covBetaSigma",  "meanBeta",
                          "individual.varR", "individual.varBeta", "ratio.varR", "antigenicTypes",  "ratio.meanBeta", "entropy")             
 # Freq 2 
+eliminated.variables = c("freq1.individual.meanMut", "freq2.individual.meanMut", "freq1.individual.meanBeta", 
+  "gp1.individual.meanMut",  "freq2.individual.varBeta", "freq2.individual.varR", "freq1.individual.varBeta",
+  "freq1.individual.varR", "freq2.individual.varMut", "freq2.meanBeta","gp1.individual.varBeta","gp1.individual.varR",       
+  "freq2.ratio.meanBeta", "freq2.meanSigma", "freq2.individual.meanBeta", "freq2.meanR", "freq1.individual.meanR",
+  "freq2.individual.meanSigma", "freq2.ratio.meanSigma", "freq1.ratio.meanR","freq2.individual.meanR",
+  "freq1.individual.meanSigma", "gp1.ratio.meanR" ,"gp1.individual.meanBeta","gp1.meanR","freq1.ratio.meanSigma",
+  "gp1.individual.meanR","freq2.covBetaSigma","freq1.varSigma","freq1.meanSigma","gp1.ratio.meanSigma",
+  "freq1.covBetaSigma","freq2.individual.varSigma" ,"freq1.varR","gp1.varSigma","freq2.meanLoad","freq1.meanBeta",
+  "freq2.diversity","freq2.antigenicDiversity","freq2.ratio.mutation","freq1.ratio.varBeta","gp1.ratio.varBeta",  
+  "freq2.entropy","freq1.individual.varMut", "freq2.dominant.freq","freq2.ratio.varR","freq1.varBeta" , "freq2.antigenicTypes",      
+  "freq1.prop.I", "freq1.totalI", "freq1.totalS", "freq1.antigenicTypes", "freq2.ratio.varBeta", "gp1.ratio.varR",            
+  "freq1.ratio.mutation" , "gp1.ratio.mutation", "freq1.entropy",             
+  "freq2.varSigma",  "gp1.antigenicDiversity")
 
-
-#########################################################################
-## Poster Figures 
+# Freq3 
 
 
