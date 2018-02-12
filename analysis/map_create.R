@@ -286,9 +286,11 @@ antigen.frequencies %>%
   map(function(x) mutate_at(x, "antigentype", as.character)) -> max.frequencies
 
 # Creating the combined data frame and using the criteria to assign a label 
+rel.frequency.thres = .05 #CHANGE 
+
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
-  map(determine_success_labels, max.rf =  .01)
+  map(determine_success_labels, max.rf =  rel.frequency.thres)
 rm(max.frequencies, days.above)
 
 ####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
@@ -315,13 +317,14 @@ entropy = map(antigen.frequencies, calculate_entropy)
 names(entropy) = trial.dirs
 
 ####### Step 5: Create Meta Data at different time points
-freq.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .01))
-#freq.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .02))
-#freq.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .03))
-#freq.four = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = .04))
-#freq.five = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = .05))
+surv.freqs = c(.01, .03, .05) #CHANGE 
 
-freq.list = list(freq.one)
+freq.t.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = surv.freqs[1]))
+freq.t.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = surv.freqs[2]))
+freq.t.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = surv.freqs[3])))
+
+
+freq.list = list(freq.t.one, freq.t.two, freq.t.three)
 
 
 ######## Step 6: Remove extra rows 
@@ -332,8 +335,8 @@ freq.list.ratio = map(freq.list, calculate_ratios)
 
 ###### Step 8: Calculate Difference Data Sets 
 freq.df =  do.call("rbind", freq.list.ratio)
-freq.df$freq = rep(c("freq.01"), sapply(freq.list.ratio, nrow))
-#freq.df$freq = rep(c("freq.01", "freq.02", "freq.03"), sapply(freq.list.ratio, nrow))
+freq.df$freq = rep(c(surv.freqs), sapply(freq.list.ratio, nrow))
+
 
 #### Step 8.5 - remove those that span  the burn in period 
 freq.df %>%
@@ -349,12 +352,10 @@ freq.df %>%
 
 
 ############# Step 9 -- Calculate proprtion infected (easier to track)
-
 freq.df.subset %>%
   mutate(prop.I  = totalI/40000000 * 100) -> freq.df.subset
 
 ############## Section 9 - Calculate Growth Differences 
-
 calculate_growth_phase = function(x, phase1, phase2) {
   (x[phase2]-x[phase1])
 }
@@ -370,14 +371,16 @@ freq.df.subset %>%
   ungroup() %>%
   mutate_at("name", as.factor) -> diff.df
 
+diff.df %>%
+  select(name, antigentype, variable, first.gp, success) %>%
+  spread(key = variable, value = first.gp) -> growth.1.subset
 
 diff.df %>%
-  select(-second.gp) %>%
-  spread(key = variable, value = first.gp) -> growth.1.subset
+  select(name, antigentype, variable, second.gp, success) %>%
+  spread(key = variable, value = second.gp) -> growth.2.subset
+
 ################ Step 9: Calculate Acceleration
 diff.df %>%
-  mutate(accelerate = second.gp - first.gp) -> diff.df
-
-diff.df %>%
-  select(-first.gp, -second.gp) %>%
-  spread(key = variable, value = accelerate) -> accelerate
+  mutate(accelerate = second.gp - first.gp) %>%
+  select(name, antigentype, variable, success, accelerate) %>%
+  spread(key = variable, value = accelerate) -> accel
