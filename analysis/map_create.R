@@ -276,6 +276,7 @@ names(antigen.frequencies) = trial.dirs
 
 ######## Step 2: For each list entry need to calculate max frequency and days above
 thres = .2
+rel.frequency.thres = .1 #CHANGE 
 
 # Calculating the two criteria for determining success and if successful how long was it there 
 antigen.frequencies %>%
@@ -286,7 +287,6 @@ antigen.frequencies %>%
   map(function(x) mutate_at(x, "antigentype", as.character)) -> max.frequencies
 
 # Creating the combined data frame and using the criteria to assign a label 
-rel.frequency.thres = .05 #CHANGE 
 
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
@@ -317,15 +317,14 @@ entropy = map(antigen.frequencies, calculate_entropy)
 names(entropy) = trial.dirs
 
 ####### Step 5: Create Meta Data at different time points
-surv.freqs = c(.01, .03, .05) #CHANGE 
+surv.freqs = c(.01, .055,.1) #CHANGE 
+
 
 freq.t.one = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial, surveillance.freq = surv.freqs[1]))
 freq.t.two = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = surv.freqs[2]))
-freq.t.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = surv.freqs[3])))
-
+freq.t.three = ddply(.data = subset.analyze, .variables = "name", function(trial) gather_data_freq2(trial,surveillance.freq = surv.freqs[3]))
 
 freq.list = list(freq.t.one, freq.t.two, freq.t.three)
-
 
 ######## Step 6: Remove extra rows 
 freq.list = map(freq.list, remove_columns)
@@ -379,8 +378,10 @@ diff.df %>%
   select(name, antigentype, variable, second.gp, success) %>%
   spread(key = variable, value = second.gp) -> growth.2.subset
 
-################ Step 9: Calculate Acceleration
+
+ ################ Step 9: Calculate Acceleration
 diff.df %>%
   mutate(accelerate = second.gp - first.gp) %>%
   select(name, antigentype, variable, success, accelerate) %>%
-  spread(key = variable, value = accelerate) -> accel
+  spread(key = variable, value = accelerate) -> accel.1
+

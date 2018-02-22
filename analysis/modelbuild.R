@@ -16,6 +16,7 @@ pop.level = c("day", "entropy","infected", "diversity", "antigenicDiversity", "a
 select_variables <- function(data.set, data.names) {
   colinear = TRUE
   vif.excluded = vector()
+  set.seed(7116)
   while(colinear == TRUE) { 
     trial.all <- glmer(success ~.-name-antigentype + (1| name), data = data.set, family = binomial,
                        control = glmerControl(optimizer="bobyqa"),nAGQ=0)
@@ -37,6 +38,7 @@ select_variables <- function(data.set, data.names) {
 select_variables_not_ant <- function(data.set, data.names) {
   colinear = TRUE
   vif.excluded = vector()
+  set.seed(7116)
   while(colinear == TRUE) { 
     trial.all <- glmer(success ~.-name + (1| name), data = data.set, family = binomial,
                        control = glmerControl(optimizer="bobyqa"),nAGQ=0)
@@ -58,12 +60,12 @@ select_variables_not_ant <- function(data.set, data.names) {
 #########################################################################
 
 ### CHANGE IF SNAPSHOT 
-desired.freq = .01
-type = "rf"
-##############
+surv.freqs = c(.01, .055,.1)
+desired.freq = surv.freqs[3]
 
 freq.df.subset %>%
   filter(freq == desired.freq) -> freq.at.rf 
+type = "rf"
 data = freq.at.rf 
 if(type == "rf") {
   data  <- within(data, {
@@ -72,17 +74,22 @@ if(type == "rf") {
     freq <- as.factor(freq)
     antigentype <- as.factor(antigentype)
   })
-  dataScaled = data %>% select(-simDay, -netau, -infected) %>%
+  dataScaled = data %>% select(-simDay, -netau, -infected, -day, -freq) %>%
     mutate_if(is.numeric, scale) # Snap shot 
   
 }
-if(type == "egf") {
-  data  <- within(data, {
-    success <- factor(success) #, levels=c("Est.", "Transient"))
+
+##############
+data = accel.1
+desired.freq = "1"
+type = "accel"
+if(type == "egf" | type == "accel") {
+    data  <- within(data, {
+   success <- factor(success) #, levels=c("Est.", "Transient"))
     name <- as.factor(name)
     antigentype <- as.factor(antigentype)
   })
-  dataScaled = data %>% select(-simDay, -netau, -infected, -freq, -day) %>%
+  dataScaled = data %>% select(-simDay, -netau, -infected) %>%
     mutate_if(is.numeric, scale) # Snap shot 
 }
 
@@ -93,7 +100,7 @@ if(type == "egf") {
 
 ################# Combing multiple time point data sets 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-colnames(dataScaled)[-factor.variables] = paste0("freq", desired.freq, colnames(dataScaled)[-factor.variables])
+colnames(dataScaled)[-factor.variables] = paste0(type, desired.freq, colnames(dataScaled)[-factor.variables])
 
 # Snapshot 
 freq.1 = dataScaled
@@ -105,7 +112,6 @@ diff.2 = dataScaled
 
 accelerate.1 = dataScaled
 
-
 ############ Making it tidy
 freq.1 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.1.l
 freq.2 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.2.l
@@ -114,21 +120,14 @@ freq.3 %>% gather(key = variable, value = value, -success,-name, -antigentype) -
 diff.2 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> gp.2.l
 diff.1 %>% gather(key = variable, value = value, -success, -name, -antigentype)  -> gp.1.l
 
-the.whole.data = bind_rows(freq.1.l, freq.2.l, freq.3.l, gp.1.l, gp.2.l, accel.l) %>%
-  spread(key = variable, value = value) %>% 
+accelerate.1 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> accel.1.l
+
+#### Build up 
+the.whole.data = bind_rows(freq.1.l, freq.2.l,freq.3.l, gp.2.l, accel.1.l, gp.1.l) %>%
+  spread(key = variable, value = value) %>%
   select(-antigentype)
 
 eliminated.vif = select_variables_no_ant(the.whole.data, colnames(the.whole.data))
 eliminated.variables = eliminated.vif[[2]]
 dataPurged = eliminated.vif[[1]] 
-=======
-accelerate.1 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> accel.1.l
 
-the.whole.data = bind_rows(freq.1.l, freq.2.l, freq.3.l, gp.2.l, gp.1.l, accel.1.l) %>%
-  spread(key = variable, value = value) %>% 
-  select(-antigentype)
-
-
-eliminated.vif = select_variables_not_ant(the.whole.data, colnames(the.whole.data))
-eliminated.variables = eliminated.vif[[2]]
-dataPurged = eliminated.vif[[1]]

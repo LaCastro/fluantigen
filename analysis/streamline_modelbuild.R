@@ -89,9 +89,8 @@ while(build == TRUE) {
     }
 }
 
-
 single.term.results = bind_cols(variable = variable.list, per =  variable.per, max.per = variable.max.per, min.per = variable.min.per, aic = variable.aic)
-write.csv(single.term.results, '../results/020918complete.1.csv', row.names = FALSE)
+write.csv(single.term.results, '../results/022018.3point.10.csv', row.names = FALSE)
 
 roc = NULL
 for(n in 1:folds.length) { 
@@ -111,33 +110,31 @@ for(n in 1:folds.length) {
   roc.values %<>% mutate(fold = n)
   roc = rbind(roc, roc.values)
 }
-write.csv(roc, "../results/020918complete.roc.1.csv", row.names = FALSE)
-
-
+write.csv(roc, "../results/022018.3point.roc.10.csv", row.names = FALSE)
 
 
 ############# Distribution of Time Advance
 subset.analyze %>% 
   select(day.success, success, antigentype, name) -> subset.calculate.day 
 
-freq.one %>%
+freq.t.three %>%
   select(success, antigentype, name, day) %>%
   left_join(subset.calculate.day) %>% 
   filter(success == "Est." & day != 1833) %>%
   mutate(lead.time = day.success - day)  -> lead.data
 
-lead.data %<>% mutate(freq = 1)
+lead.data %>% 
+  ggplot(aes(lead.time)) + geom_histogram(bins = 30)
+summary(lead.data$lead.time)
 
-
-
-
+write.csv(lead.data, file= "../results/lead.time/022018.3point.lead.10.csv", row.names = FALSE)
 
 
 ############## STEP TWO: Interactions 
-base.formula = paste0(paste(variable.list, collapse = "+"), "+(1|name)")
+#base.formula = paste0(paste(variable.list, collapse = "+"), "+(1|name)")
 # Generates possible combinations 
-combn.df = data.frame(combn(variable.list, m=2))
-comb.list = unname(apply(combn.df, MARGIN = 2, function(x) paste(x, collapse = "*")))
+#combn.df = data.frame(combn(variable.list, m=2))
+#comb.list = unname(apply(combn.df, MARGIN = 2, function(x) paste(x, collapse = "*")))
 
 dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
 dataPurged %>%
