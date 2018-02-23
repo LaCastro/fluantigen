@@ -300,3 +300,61 @@ term.number.sub %>%
   labs(x = "Rel. Freq. Thres", y = "Contribution to final AUC", fill = "Term Number") -> value.added
 
 save_plot("exploratory.figs/value.added.pdf", value.added, base_height = 8)
+
+
+########################### Looking at slice
+data.dir = "~/Dropbox/current_fluantigen/current_csvs/"
+slice.files = dir(paste0(data.dir, "slice/"))
+slice.list = map(slice.files, function(x) read.csv(paste0(data.dir, "slice/", x), header = TRUE))
+freq = c("5", "10", "full")
+
+
+slice.terms = do.call("rbind", slice.list[c(1,2,3)])
+slice.terms$name =  rep(c(freq), sapply(slice.list[1:3], nrow))
+slice.roc = do.call("rbind", slice.list[c(4,5,6)])
+slice.roc$name =rep(c(freq), sapply(slice.list[4:6], nrow))
+
+
+slice.terms$name = factor(slice.terms$name, levels = c("5", "10", "full"), labels = c("5%", "10%", ">10%"))
+slice.terms %<>%
+  group_by(name) %>%
+  mutate(term  = row_number()) 
+slice.terms$term = factor(slice.terms$term, levels = c(1,2,3,4,5,6,7,8,9), 
+                          labels = c("Relative R", "Frequency", "Variance in R", "mean Pop R", "Relative Variance Beta", "Relative Deleterious Mutation",
+                                     "Antigenic Diversity", "8", "9"))
+slice.terms %>%
+  ggplot(aes(x = term, y = per, color = name, group = name)) + geom_line(size = 2) +
+  scale_color_viridis(discrete = TRUE) + scale_fill_viridis(discrete = TRUE) + 
+  geom_ribbon(aes(ymin = min.per, ymax = max.per, fill = name), alpha = .3) + labs(x = "", y = "AUC", color = "") + 
+  guides(fill = FALSE) + theme(legend.position = c(.8,.5)) + theme(axis.text.x = element_text(angle = 60, hjust = 1)) -> performance.slice
+performance.slice
+
+######## ROC 
+slice.roc$name = factor(slice.roc$name, levels = c("5", "10", "full"), labels = c("5%", "10%", ">10%"))
+slice.roc %>%
+  mutate_at("fold", as.factor) %>%
+#  filter(fold == 1) %>%
+  ggplot(aes(x =(1-spec), y = sen, color = name, group=as.factor(fold))) + geom_point(alpha = .4, size  = 2) +
+  scale_color_viridis(discrete = TRUE) + guides(color = FALSE) + scale_x_continuous(breaks = seq(0,1,.2)) + 
+  scale_y_continuous(breaks = seq(0,1,.2)) + 
+  labs( x = "False Positive Rate (1-Specificity)", y = "True Positive Rate (Sensitivity)", color = "") -> sen.spec.slice
+
+
+
+############# Percentage that first three make up
+top.3 = c("Relative R", "Frequency", "Variance in R")
+
+slice.terms %>%
+  group_by(name) %>%
+  mutate(value = per/max(per),
+         percent.add = value-lag(x = value,1)) %>%
+  mutate(percent = ifelse(is.na(percent.add), value, percent.add)) %>%
+  filter(term %in% top.3) %>%
+  ggplot(aes(x = name, y = percent, fill = term)) + 
+    geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) + 
+    scale_fill_manual(values = c("grey64", "grey37", "black")) + labs(x = "Frequency Cut-Off",
+                                                                 y = "Proportion of Final AUC",
+                                                                 fill = "") -> top.three.slice
+column1 = plot_grid(sen.spec.slice, top.three.slice, ncol = 1)
+slice.summary = plot_grid(column1, performance.slice, nrow = 1) 
+save_plot(slice.summary, filename = "exploratory.figs/summary.slice.pdf", base_height = 8, base_aspect_ratio = 1.8)

@@ -8,6 +8,7 @@ library(caret)
 library(cvTools)
 library(cowplot)
 library(data.table)
+library(magrittr)
 #################################################################
 ########################################################################
 select_variables <- function(data.set) {
@@ -32,11 +33,11 @@ select_variables <- function(data.set) {
   }
   return(list(data = data.set, excluded.variables = vif.excluded))
 }
-select_variables_not_ant <- function(data.set, data.names) {
+select_variables_not_ant <- function(data.set) {
   colinear = TRUE
   vif.excluded = vector()
   while(colinear == TRUE) { 
-    trial.all <- glmer(success ~.-name + (1| name), data = data.set, family = binomial,
+    trial.all <- glmer(success ~.-trial + (1| trial), data = data.set, family = binomial,
                        control = glmerControl(optimizer="bobyqa"),nAGQ=0)
     vif.results = data.frame(vif.mer(trial.all))
     setDT(vif.results, keep.rownames = TRUE)
@@ -56,11 +57,10 @@ select_variables_not_ant <- function(data.set, data.names) {
 #########################################################################
 
 ### CHANGE IF SNAPSHOT 
-desired.freq = .01
-type = "rf"
-##############
+desired.time = "diff"
 
-data = data.1.df
+data = full.data.df %>% filter(time == desired.time)
+
 data  <- within(data, {
     success <- factor(success) #, levels=c("Est.", "Transient"))
     trial <- as.factor(trial)
@@ -73,45 +73,32 @@ data  <- within(data, {
 data %>% 
   select(antigentype, success, variable, value, trial, group) %>%
   spread(key = variable, value = value) %>% select(-netau) %>%
+  mutate(id = paste0(antigentype, "_",group)) %>% 
+  mutate_at("id", as.factor) %>%
   mutate_if(is.numeric, scale) -> dataScaled
 
-
 ########## Fit first model 
-eliminated.vif = select_variables(dataScaled)
-eliminated.variables = eliminated.vif[[2]]
-dataPurged = eliminated.vif[[1]] %>% select(-antigentype)
+#eliminated.vif = select_variables(dataScaled)
+#eliminated.variables = eliminated.vif[[2]]
+#dataPurged = eliminated.vif[[1]] %>% select(-antigentype)
 
-
-################# Combing multiple time point data sets 
+############# Combing multiple time point data sets 
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
-colnames(dataScaled)[-factor.variables] = paste0("freq", desired.freq, colnames(dataScaled)[-factor.variables])
+colnames(dataScaled)[-factor.variables] = paste0(desired.time, colnames(dataScaled)[-factor.variables])
 
 # Snapshot 
-freq.1 = dataScaled
-freq.2 = dataScaled
-freq.3 = dataScaled
-
+time.1 = dataScaled
+time.2 = dataScaled 
 diff.1 = dataScaled
-diff.2 = dataScaled
-
-accelerate.1 = dataScaled
-
 
 ############ Making it tidy
-freq.1 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.1.l
-freq.2 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.2.l
-freq.3 %>% gather(key = variable, value = value, -success,-name, -antigentype) -> freq.3.l
-
-diff.2 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> gp.2.l
-diff.1 %>% gather(key = variable, value = value, -success, -name, -antigentype)  -> gp.1.l
-
-accelerate.1 %>% gather(key = variable, value = value, -success, -name, -antigentype) -> accel.1.l
-
-the.whole.data = bind_rows(freq.1.l, freq.2.l, freq.3.l, gp.2.l, gp.1.l, accel.1.l) %>%
+time.1 %>% select(-group, -antigentype,-t1day) %>% gather(key = variable, value = value, -success, -trial, -id) -> time.1.l
+time.2 %>% select(-group, -antigentype,-t2day) %>% gather(key = variable, value = value, -success, -trial, -id) -> time.2.l
+diff.1 %>% select(-group, -antigentype) %>% gather(key = variable, value = value, -success, -trial, -id) -> diff.1.l
+the.whole.data = bind_rows(time.1.l, time.2.l, diff.1.l) %>%
   spread(key = variable, value = value) %>% 
-  select(-antigentype)
+  select(-id)
 
-
-eliminated.vif = select_variables_not_ant(the.whole.data, colnames(the.whole.data))
+eliminated.vif = select_variables_not_ant(the.whole.data)
 eliminated.variables = eliminated.vif[[2]]
 dataPurged = eliminated.vif[[1]]

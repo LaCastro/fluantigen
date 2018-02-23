@@ -21,7 +21,7 @@ fixed.part.1 = "success ~ value + "
 fixed.part.2 = " + (1 | name)"
 
 dataPurged$success <- relevel(dataPurged$success, ref = "Transient")
-dataPurged %<>% select(-group)
+#dataPurged %<>% select(-group)
 
 while(build == TRUE) {
   # Step 1: Sets the formula and manipulates the data set
@@ -91,3 +91,25 @@ while(build == TRUE) {
   }
 }
 
+single.term.results = bind_cols(variable = variable.list, per =  variable.per, max.per = variable.max.per, min.per = variable.min.per, aic = variable.aic)
+write.csv(single.term.results, '../results/022318.slicediff.csv', row.names = FALSE)
+
+roc = NULL
+for(n in 1:folds.length) { 
+  test.ids = folds$subsets[folds$which==n]
+  test.trials = unique(data.scaled.l$name)[test.ids]
+  testdata = dataPurged[which(dataPurged$name %in% test.trials), ]
+  traindata = dataPurged[-which(dataPurged$name %in% test.trials),]
+  GLMER <- lme4::glmer(formula.null, data = traindata, family="binomial", 
+                       control = glmerControl(optimizer="bobyqa"),nAGQ=0)
+  data.summary.mat[n,] = c(glance(GLMER)[3], tidy(GLMER)[2,5])
+  glmer.probs <- predict(GLMER, newdata=testdata, type="response", allow.new.levels=TRUE)
+  glmer.ROC <- roc(predictor=glmer.probs, response=testdata$success)
+  
+  roc.values = data.frame(cbind(sen = glmer.ROC$sensitivities,
+                                spec = glmer.ROC$specificities,
+                                thres = glmer.ROC$thresholds))
+  roc.values %<>% mutate(fold = n)
+  roc = rbind(roc, roc.values)
+}
+write.csv(roc, "../results/022318.slicediff.roc.csv", row.names = FALSE)
