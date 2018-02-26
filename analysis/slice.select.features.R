@@ -91,8 +91,14 @@ while(build == TRUE) {
   }
 }
 
+<<<<<<< Updated upstream
 single.term.results = bind_cols(variable = variable.list, per =  variable.per, max.per = variable.max.per, min.per = variable.min.per, aic = variable.aic)
 write.csv(single.term.results, '../results/022318.slicediff.csv', row.names = FALSE)
+=======
+
+single.term.results = bind_cols(variable = variable.list, per =  variable.per, max.per = variable.max.per, min.per = variable.min.per, aic = variable.aic)
+write.csv(single.term.results, '../results/022218.slice.05.csv', row.names = FALSE)
+>>>>>>> Stashed changes
 
 roc = NULL
 for(n in 1:folds.length) { 
@@ -112,4 +118,35 @@ for(n in 1:folds.length) {
   roc.values %<>% mutate(fold = n)
   roc = rbind(roc, roc.values)
 }
+<<<<<<< Updated upstream
 write.csv(roc, "../results/022318.slicediff.roc.csv", row.names = FALSE)
+=======
+write.csv(roc, "../results/022218.slice.roc.05.csv", row.names = FALSE)
+
+
+
+
+############# Distribution of Time Advance
+
+### Looking at the frequency (randomly, when do I get it)
+data %>% 
+  filter(variable == "frequency") %>%
+  group_by(success) %>%
+  summarize(min.iqr = quantile(value,probs = .25),
+            med.iqr = median(value),
+            max.iqr = quantile(value, probs = .75)) -> data.summary
+
+
+data %>% 
+  filter(variable == "frequency") %>%
+  ggplot(aes(value,  fill = success)) + geom_density(alpha = .8) + 
+  labs(x = "Relative frequency when sampled", y = "Density", fill = "")  +
+  scale_fill_manual(values = c("black", "grey")) -> density.frequency.full
+  
+data %>% 
+  filter(variable == "frequency") %>%
+  ggplot(aes(value,  fill = success)) + geom_histogram() + 
+  labs(x = "Relative frequency when sampled", y = "Counts", fill = "")  +
+  scale_fill_manual(values = c("black", "grey")) -> histo.frequency.full
+
+>>>>>>> Stashed changes

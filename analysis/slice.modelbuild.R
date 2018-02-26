@@ -77,12 +77,30 @@ data %>%
   mutate_at("id", as.factor) %>%
   mutate_if(is.numeric, scale) -> dataScaled
 
+<<<<<<< Updated upstream
+=======
+data %>% 
+  select(antigentype, success, variable, value, trial, group) %>%
+  spread(key = variable, value = value) %>% select(-netau) %>%
+  filter(frequency < .05) %>%
+  mutate_if(is.numeric, scale) -> dataScaled
+
+  
+
+>>>>>>> Stashed changes
 ########## Fit first model 
 #eliminated.vif = select_variables(dataScaled)
 #eliminated.variables = eliminated.vif[[2]]
 #dataPurged = eliminated.vif[[1]] %>% select(-antigentype)
 
+<<<<<<< Updated upstream
 ############# Combing multiple time point data sets 
+=======
+
+
+
+################# Combing multiple time point data sets 
+>>>>>>> Stashed changes
 factor.variables = which(sapply(dataScaled,is.factor)==TRUE)
 colnames(dataScaled)[-factor.variables] = paste0(desired.time, colnames(dataScaled)[-factor.variables])
 

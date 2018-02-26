@@ -25,7 +25,7 @@ antigen.frequencies %>%
   map(function(x) mutate_at(x, "antigentype", as.character)) -> max.frequencies
 
 # Creating the combined data frame and using the criteria to assign a label 
-rel.frequency.thres = .01 # Threshold at which we start monitoring/exepct to pick up in surveillance 
+rel.frequency.thres = .01 # Threshold at which we start monitoring/expect to pick up in surveillance 
 full.data = map2(max.frequencies, days.above, left_join) %>%
   map(replace_na_zeros) %>% 
   map(determine_success_labels, max.rf = rel.frequency.thres)

@@ -124,8 +124,64 @@ data.set %>%
   geom_smooth(method="lm") + #, formula = y~s(x)) + 
   labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> lm.set1
 
-  
-################### Figure 4 B #################################
+variable.1 = "ratio.meanR"; variable.2 = "varR" 
+variable.name.1 = expression(paste("Relative ", italic("R"), " Advantage: 5%")) 
+variable.name.2 = expression(paste("Variance in ", italic("R"), ":5%"))
+
+color = "success"
+
+data.5 %>%
+  ggplot(aes_string(x = variable.1, y = variable.2, color = color)) +
+    geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success),
+                 geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) + #+  
+  geom_smooth(method="lm") + #, formula = y~s(x, k =3)) + 
+  labs(x = variable.name.1, y  = variable.name.2, color = "", fill  = "") -> lm.5
+
+interaction.10 = plot_grid(lm.10, gam.10)
+interaction.5 = plot_grid(lm.5, gam.5)
+interaction.01 = plot_grid(lm.01, gam.01)
+
+interaction.compare = plot_grid(interaction.01, interaction.5, interaction.10, ncol = 1)
+save_plot(plot = interaction.compare, "exploratory.figs/interaction.compare.pdf",
+          base_height = 9, base_aspect_ratio = 1.3)
+
+
+############# Interaction for Diff Data 
+
+data.1.df %>% filter(variable == "ratio.meanR" | variable == "frequency" | variable == "varR") %>%
+  select(-list, -time.stamp) %>%
+  spread(key = variable,  value= value) -> data.1.int
+
+variable.1 = "ratio.meanR"; variable.2 = "frequency"; variable.3 = "varR"
+variable.name.1 = expression(paste("Relative ", italic("R"))) 
+variable.name.2 = "Frequency" 
+variable.name.3 = expression(paste("Variance in ", italic("R"))) 
+
+color = "success"
+data.1.int$frequency = as.numeric(as.character(data.1.int$frequency))
+data.1.int$ratio.meanR = as.numeric(as.character(data.1.int$ratio.meanR))
+data.1.int$varR = as.numeric(as.character(data.1.int$varR))
+
+data.1.int %>%
+  ggplot(aes_string(x = variable.1, y = variable.3, color = color)) +
+  geom_point(alpha = .3, size = .5) + 
+  stat_density2d(aes(fill = ..level.., color = success),
+                 geom = "polygon", color = "black", size = 0.5, alpha = 0.8)  +
+  scale_color_manual(values = c("black", "grey")) +
+  scale_fill_viridis() + guides(fill = FALSE) + #+  
+  geom_smooth(method="gam", formula = y~s(x, k =3)) + 
+  labs(x = variable.name.1, y  = variable.name.3, color = "", fill  = "") -> gam.slice.3
+
+slice.first.two  = plot_grid(lm.slice, gam.slice, nrow = 1)
+slice.first.three = plot_grid(lm.slice.3, gam.slice.3, nrow = 1)
+
+slice.variables = plot_grid(slice.first.two, slice.first.three, ncol = 1)
+save_plot(slice.variables, filename = "exploratory.figs/slice.variables.pdf",
+          base_height = 8)
+ ################### Figure 4 B #################################
 variable.1 = "ratio.meanR_freq1"; variable.2 = "varR_freq3" 
 variables = c(variable.1, variable.2)
 fill = "rel.freq"
