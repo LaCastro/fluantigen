@@ -1,276 +1,200 @@
 rm(list=ls())
 #####
-library(plyr)
-library(tidyverse)
-library(ggplot2)
-library(cowplot)
-library(scales)
-library(reshape2)
-library(data.table)
-library(RColorBrewer)
-library(broom)
-
+source('loadLibraries.R')
 source('analysis_functions.R')
-source('plotting_functions.R')
 
 
-########## Antigen Frequencies START HERE 
-north.folder = "../data/north/"
+########## Variance Vs. Infected 
 
 exploratory.figures = "../analysis/exploratory.figs/"
-
-## Single Geo Analysis 
-#Read and combine files
-success.criteria = setNames(data.frame(matrix(ncol = 2, nrow = 1)), c("freq","length.days"))
-success.criteria$freq = .2
-success.criteria$length.days = 90
-
-antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
-
-north.data = create_meta_data_all(dir = north.folder, success.criteria)
-north.data = remove_trials_data(north.data, north.correct.trial)
-
-north.antigen.frequencies <- read_outputfiles(north.folder, "/out.antigenFrequencies.txt")
-north.antigen.frequencies <- remove_trials_data(north.antigen.frequencies, north.correct.trial)
-
-north.infected.range = calculate_max_infected(timeseries = north.timeseries)
-north.data = normalize_infection(north.data, infected.range = north.infected.range)
-north.data = calculate_age_of_dominant(north.data)
-
-north.data %>%
-  select(-day, -oriAntigen, -N, -R, -cases, -simDay,-min.I, -max.I) %>%
-  gather(key = metric, value = value,
-         -final.max, -life.length, -success, -postAntigen, -.id) -> north.data.l
-north.data.l$value = as.numeric(north.data.l$value)
-
-north.ant.density = plot_metric_density(data.l = north.data.l, metrics = antigen.specific.metrics)
-save_plot(north.ant.density, 
-          filename = "../analysis/exploratory.figs/N.antigenspecific.density.pdf", 
-          base_height = 8, base_aspect_ratio = 2)
-
-pop.dynamics <- c("ratio.I", "S", "I")
-
-north.pop.dynamics.density <- plot_metric_density(north.data.l, pop.dynamics)
-save_plot(north.pop.dynamics.density, 
-          filename = "../analysis/exploratory.figs/N.pop.dynamics.pdf",
-          base_aspect_ratio = 2)
+data.folder = "../data/tropics/eligible/"
 
 
-viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma",
-                           "varBeta", "varR", "varSigma", "covBetaSigma")
-variance.fitness.metrics <- c("varBeta", "varR", "varSigma", "covBetaSigma")
+data.list = dir(data.folder)
 
+timeseries = read_outputfiles(dir = data.folder, type = "/out.timeSeries.txt")
+viralfitness = read_outputfiles(dir = data.folder, type = "/out.viralFitnessSeries.txt")
 
-viral.fitness.density  = plot_metric_density(north.data.l, viral.fitness.metrics)
-save_plot(viral.fitness.density, 
-          filename = "../analysis/exploratory.figs/N.viralfitness.density.pdf", 
-          base_height = 8, base_aspect_ratio = 1.5)
+timeseries %<>% mutate(propI = totalI/totalN)
+trials = unique(timeseries$.id)
 
-
-######### Successful  Dynamics 
-success.types = return_success_types(north.data )
-
-### For each successtype, go into antigen frequency all, filter and full out
-##### Read in the antigen frequencies and then store those in a list 
-antigen.freq.success.df= filter_frequencies_success(antigen.frequencies = north.antigen.frequencies,
-                                                    success.types)
-
-#Determine the maximum number of colors going to need 
-antigen.freq.success.df %>%
-  group_by(.id) %>%
-  summarize(num.transitions = n_distinct(antigentype)) -> num.transitions
-max.color = sum(num.transitions$num.transitions)
-myColors = set_my_colors(max.color)
-
-## Need to first go in and fill all the missing values and then combine
-ant.freq.success.l = fill_antigen_values(antigen.freq.success.df) 
-
-## Need to first go in and fill all the missing values and then combine
-north.all.lifespans = calculate_total_life_id(north.antigen.frequencies)
-
-
-##########################
-# Histograms of the metrics
-antigen.specific.metrics <- c("distance", "mutLoad", "antigenicTypes", "dominant.freq")
-pop.dynamics <- c("S", "I")
-viral.fitness.metrics <- c("diversity", "tmrca","meanR", "meanLoad", "meanBeta", "meanSigma")
-
-
-################## Creating the quantile metrics ----  Need a function for this 
-emergence.data %>%
-  gather(key = metric, value = value, -postAntigen, -success, -.id) -> data.long
-data.long$value = as.numeric(data.long$value)
-
-data.long %>%
-  group_by(success, metric, .id) %>%
-  nest(-metric) -> north.nested
-
-north.nested %>%
-  mutate(Quantiles = map(data, ~ quantile(.$value, probs = c(.025,.5,.975), na.rm = TRUE))) %>%
-  unnest(map(Quantiles, tidy)) %>%
-  spread(names, value = x) -> north.data.quantiles
-
-colnames(north.data.quantiles) = c("success", "metric", "trial", "lower", "median", "upper")
-
-
-# Combine the two meta popualtions 
-combined.data = bind_rows(tropics.data.quantiles, north.data.quantiles, .id = "source")
-combined.data$source[which(combined.data$source == 2)] = "north"
-combined.data$source[which(combined.data$source == 1)] = "tropics"
-
-
-combined.data %>%
-  filter(metric %in% antigen.specific.metrics) %>%
-  ggplot(aes(x = success, y = median, group = trial, color = source)) + 
-  geom_point(position = position_dodge(width = 0.5)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = .1, position = position_dodge(width = 0.5)) +
-  scale_color_manual(values = c("purple", "orange")) +
-  facet_wrap(~metric, scales = "free") +
-  labs(x = "Successful Transition", y = "Number of Individuals") +
-  ggtitle("Viral Fitness Metrics 10 Trials, 40 mil people") -> antigen.specific.plot
-
-save_plot(filename = paste0(exploratory.figures, "antigen.specific.plotCulled.pdf"), antigen.specific.plot, base_height = 8, base_aspect_ratio = 1.5)
-
-#################### Trying to calculate days between successull ---- work on this 
-
-
-
-# Summary for Threshold Plot - Need to change this to 180 days as well
-
-threshold.freq.levels = c(.05, .1, .15, .2, .25)
-threshold.day.levels = c(90, 180, 270, 360)
-
-
-tropics.antigen.summary = antigen.success.summary(antigen.frequencies = tropics.antigen.frequencies,threshold.freq.levels = threshold.freq.levels, threshold.day.levels = threshold.day.levels)
-north.antigen.summary = antigen.success.summary(antigen.frequencies = north.antigen.frequencies.subset, threshold.freq.levels = threshold.freq.levels, threshold.day.levels = threshold.day.levels)
-
-combined.antigen.summary = bind_rows(north.antigen.summary, tropics.antigen.summary, .id = "source")
-combined.antigen.summary$source[which(combined.antigen.summary$source == 1)] = "north"
-combined.antigen.summary$source[which(combined.antigen.summary$source == 2)] = "tropics"
-colnames(combined.antigen.summary)[4:6] = c("lower", "mid", "upper")
-
-
-combined.antigen.summary %>%
-  gather(metric, value, -source, -freq, -day) %>%
-  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
-  filter(type == "counts") %>%
-  spread(key = metric, value = value) %>%
-  ggplot(aes(x = freq, y = median, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
-  facet_wrap(~day, nrow = 1)+
-  geom_errorbar(aes(ymin = min, ymax = max), position=position_dodge(width=0.01)) +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
-  labs(x = "Frequency Threshold Level", y = "Number of Success") +
-  guides(color = FALSE) -> summary.plot1
+plot_varR.v.infections = function(samples, timeseries, viralfitness) {
+  sub.time = timeseries %>% filter(.id %in% samples) %>% select(propI, date, .id)
+  sub.fitness = viralfitness %>% filter(.id %in% samples) %>% select(day, simDay, varR)
+  data.plot = cbind(sub.time, sub.fitness) 
+  # checked that time is roughly matched up 
+  data.plot %>%
+    mutate(scaled.propI = scale(propI),
+           scaled.varR = scale(varR)) %>% 
+    ggplot(aes(x =scaled.propI, y = scaled.varR)) + geom_point() + 
+    facet_wrap(~.id) + labs(x = "Scaled Infected", y = "Scaled Variance in Fitness") -> scatter.plot
+  data.plot %>%
+    mutate(scaled.propI = scale(propI),
+           scaled.varR = scale(varR)) %>%
+    select(date, .id, scaled.propI, scaled.varR) %>%
+    gather(key = variable, value = value, scaled.propI, scaled.varR, -date, -.id) %>%
+    ggplot(aes(x = date, y = value, color = variable)) + 
+      geom_line(size = 1.3, alpha = .8) + facet_wrap(~.id) +
+      labs(x = "Year", y = "Scaled Value", color = "") + 
+      scale_color_brewer(type = "qual", palette = "Dark2", labels = c("Infected", "Variance in Fitness")) +
+      theme(legend.position = c(.8,.8)) + 
+      theme(strip.text.x = element_blank())  -> dynamics.plot
   
-combined.antigen.summary %>%
-  gather(metric, value, -source, -freq, -day) %>%
-  mutate(type = ifelse(value < 1, "percentage", "counts")) %>%
-  filter(type == "percentage") %>%
-  spread(key = metric, value = value) %>%
-  ggplot(aes(x = freq, y = mid, color = source)) + geom_jitter(position=position_dodge(width=0.01)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), position=position_dodge(width=0.01)) +
-  facet_wrap(~day, nrow = 1) +
-  scale_color_manual(values = c("purple", "orange")) +
-  scale_x_continuous(breaks = seq(from = .05, to = .25,by = .05)) +
-  labs(x = "Frequency Threshold Level", y = "Percentage of Antigens") +
- theme(legend.position="bottom")-> summary.plot2
+  plot_grid(scatter.plot, dynamics.plot, nrow =2)
+}
 
-
-plot_grid(summary.plot1, summary.plot2, nrow = 2) -> summary.grid
-save_plot(filename = "exploratory.figs//antigen.success.summary.pdf", 
-          summary.grid, base_height = 8, base_aspect_ratio = 2)
+varR.v.infections1 = plot_varR.v.infections(samples = sample(trials, size = 3), timeseries, viralfitness) 
+varR.v.infections2 = plot_varR.v.infections(samples = sample(trials, size = 3), timeseries, viralfitness)
+save_plot(plot = varR.v.infections1, filename = "exploratory.figs/varR.v.infections1.pdf", base_height = 8, base_aspect_ratio = 1.8)
 
 
 
-###################################
-# Testing quarter to see where it lines up - trying mid seasonality
+############## 
+# Variation vs Frequency of Dominant/Transient
 
-antigen.data
+tropics.folder = "../data/tropics/eligible/"
+trial.dirs = dir(tropics.folder)
 
-tropics.timeseries = read_outputfiles(data.folder, "/out.timeseries.txt")
-mid.timeseries = read_outputfiles(dir = "../data/mid/correct_mid20yr/", type = "/out.timeseries.txt")
-north.timeseries = read_outputfiles(dir = "../data/north_20yrcorrect/", type = "/out.timeseries.txt")
+# This is a slow step
+antigen.frequencies = map(trial.dirs, function(x) read.table(paste0(tropics.folder,x,"/out.antigenFrequencies.txt"), header = TRUE)) 
+names(antigen.frequencies) = trial.dirs
 
-head(tropics.timeseries)
+######## Step 2: For each list entry need to calculate max frequency and days above
+thres = .2
+rel.frequency.thres = .05 #CHANGE 
 
-tropics.timeseries %>%
-  mutate(time.of.year = date-floor(date)) %>%
-  mutate(year = floor(time.of.year)) %>%
-  mutate(quarter = ifelse(time.of.year < .25, 1,
-                          ifelse(time.of.year < .5, 2,
-                                 ifelse(time.of.year < .75, 3,4)))) %>%
-  mutate(quarter = as.factor(quarter)) %>%
-  select(.id, date, year, totalI, time.of.year, quarter) -> tropics.timeseries
+# Calculating the two criteria for determining success and if successful how long was it there 
+antigen.frequencies %>%
+  map(function(x) calculate_days_above(x, threshold = .2)) -> days.above
+
+antigen.frequencies %>%
+  map(find_max_frequency) %>%
+  map(function(x) mutate_at(x, "antigentype", as.character)) -> max.frequencies
+
+# Creating the combined data frame and using the criteria to assign a label 
+full.data = map2(max.frequencies, days.above, left_join) %>%
+  map(replace_na_zeros) %>% 
+  map(determine_success_labels, max.rf =  rel.frequency.thres)
+rm(max.frequencies, days.above)
+
+####### Step 3: Subsetting for just transient and yes; and getting rid of zeros 
+subset.data = map(full.data, filter_out_loss) 
+subset.df = do.call("rbind", subset.data)
+subset.df$name = rep(trial.dirs, sapply(subset.data, nrow))
+
+subset.df %>%
+  filter(antigentype != 0) -> subset.analyze
+
+subset.analyze %>%
+  mutate(key = paste0(antigentype, "_", name)) -> subset.analyze
+
+#antigen.frequencies.df = do.call("rbind", antigen.frequencies)
+#antigen.frequencies.df$name = rep(trial.dirs, sapply(antigen.frequencies, nrow))  
+
+antigen.frequencies.df %>%
+  mutate(key = paste0(antigentype, "_", name)) %>%
+  filter(key %in% subset.analyze$key) %>%
+  group_by(antigentype, name) %>%
+  arrange(antigentype) -> antigen.frequencies.df.sub
+
+subset.analyze %>%
+  select(success, key) %>%
+  left_join(antigen.frequencies.df.sub, by = "key") -> antigen.frequencies.df.sub
+
+
+sample.key = sample(antigen.frequencies.df.sub$key, size = 10)
+
+# Frequency profiles of difference types 
+antigen.frequencies.df.sub %>% 
+  filter(key %in% sample.key) %>%
+  ggplot(aes(x = day/365, y = frequency, color = success)) + geom_line() + facet_wrap(~key, scales = "free_x") +
+  scale_x_continuous(breaks = seq(from = 5, to = 25, by=2))
   
-mid.timeseries %>%
-  mutate(time.of.year = date-floor(date)) %>%
-  mutate(year = floor(time.of.year)) %>%
-  mutate(quarter = ifelse(time.of.year < .25, 1,
-                          ifelse(time.of.year < .5, 2,
-                                 ifelse(time.of.year < .75, 3,4)))) %>%
-  mutate(quarter = as.factor(quarter)) %>%
-  select(.id, date, year, totalI, time.of.year, quarter) -> mid.timeseries
 
-
-north.timeseries %>%
-  mutate(time.of.year = date-floor(date)) %>%
-  mutate(year = floor(time.of.year)) %>%
-  mutate(quarter = ifelse(time.of.year < .25, 1,
-                          ifelse(time.of.year < .5, 2,
-                                 ifelse(time.of.year < .75, 3,4)))) %>%
-  mutate(quarter = as.factor(quarter)) %>%
-  select(.id, date, year,  totalI, time.of.year, quarter) -> north.timeseries
-
-
-unique(north.timeseries$.id)
-
-
-quarter1.2 = data.frame(seq(.25,19.25, 1));colnames(quarter1.2) = "date"
-quarter2.3 = data.frame(seq(.5, 19.5, 1)); colnames(quarter2.3) = "date"
-quarter3.4 = data.frame(seq(.75,19.75,1)); colnames(quarter3.4) = "date"
-quarter4.1 = data.frame(seq(0,20,1)); colnames(quarter4.1) = "date"
-
-north.timeseries %>%
-  filter(.id == "north_57") %>%
-  filter(year < 10) %>%
-  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
-  coord_cartesian(xlim = c(0,10), ylim = c(0,200)) + 
-  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
-  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
-  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
-  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) +
-  scale_x_continuous(breaks = seq(0,10,1)) +
-  labs(x = "Year", y = "Infected per 100K", title  = "Temperate Seasonal Forcing") -> temperate
+antigen.frequencies.df.sub %>%
+  group_by(success, antigentype, name) %>%
+  summarize(max.freq = mean(max(frequency))) %>%
+  ggplot(aes(x=success, y=max.freq)) + geom_boxplot() + 
+  labs(x = "Antigenic Fate", y = "Maximum Frequency")  -> max.frequency.plot.bp
   
-unique(mid.timeseries$.id)
-mid.timeseries %>%
-  filter(.id == "mid_10") %>%
-  filter(year < 10) %>%
-  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
-  coord_cartesian(xlim = c(0,10)) + 
-  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
-  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
-  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
-  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) +
-  labs(x = "Year", y = "Infected per 100K", title = "Mid-Level Seasonal Forcing") +
-  scale_x_continuous(breaks = seq(0,10,1)) -> mid.level
-
-
-tropics.timeseries %>%
-  filter(.id == "tropics_20") %>%
-  ggplot(aes(x=date, y=totalI*.0025)) + geom_line(size = 2) +
-  coord_cartesian(xlim = c(0,10)) + 
-  geom_vline(data = quarter1.2, aes(xintercept = date), color = "orange") +
-  geom_vline(data = quarter2.3, aes(xintercept = date), color = "purple") +
-  geom_vline(data = quarter3.4, aes(xintercept = date), color = "darkgrey") +
-  geom_vline(data = quarter4.1, aes(xintercept = date), color = "black", lty  = 2) + 
-  labs(x = "Year", y = "Infected per 100K", title = "No Seasonal Forcing") +
-  scale_x_continuous(breaks = seq(0,10,1)) -> tropics
-
-seasonal.forcing  = plot_grid(tropics, mid.level, temperate, ncol = 1) 
-save_plot(seasonal.forcing, filename = "exploratory.figs/seasonal.forcing.pdf",
-          base_height = 8,
-          base_aspect_ratio = 1.5)
+viralfitness %>%
+  select(.id, day, meanR, varR) %>%
+  left_join(antigen.frequencies.df.sub, by = c("day", ".id"="name")) -> antigen.frequencies.df.sub
   
+viralTrackType = read_outputfiles(dir = data.folder, type = "/out.typeViralFitness.txt")
+colnames(viralTrackType)[5:12] = paste0("type_", colnames(viralTrackType)[5:12])
+
+viralTrackType %>%
+  mutate(key = paste0(antigenType, "_", .id)) %>%
+  filter(key %in% subset.analyze$key) %>%
+  select(-.id) %>%
+  left_join(antigen.frequencies.df.sub, by = c("day", "key")) %>%
+  group_by(key) %>%
+  arrange(key) %>%
+  mutate(ratio.meanR = exp(type_meanR)/meanR) ->  metrics.by.freq
+
+library(ggridges)
+
+keys = unique(metrics.by.freq$key)
+sample.keys = sample(keys, 10)
+
+metrics.by.freq %>%
+  group_by(key) %>%
+  slice(which.max(frequency)) %>%
+  select(day, key) -> peak.day
+
+
+# This takes a while 
+metrics.trial = ddply(metrics.by.freq, .variables = "key", function(x) {
+  peak.day %>%
+    ungroup() %>%
+    filter(key == x$key[1]) %>%
+    select(day) -> antigen.peak.day
+  x %<>% mutate(phase = ifelse(day <= antigen.peak.day$day, "Growth","Decline"))
+  return(x)
+})
+
+metrics.trial$phase = factor(metrics.trial$phase, levels = c("Growth", "Decline"))
+
+metrics.trial %>%
+  mutate(scale.varR = scale(varR),
+      freq.bin = cut(frequency, breaks = seq(from = 0, to = 1,by =.1))) -> metrics.trial
+attributes(metrics.trial$scale.varR) = NULL  
+
+metrics.trial %>%
+  filter(success == "Est.") %>%
+  select(success, phase,simDay, antigenType, varR, ratio.meanR, frequency, freq.bin, scale.varR) %>%
+  ggplot(aes(x = ratio.meanR, y = freq.bin, color = phase, fill = phase)) + 
+  geom_density_ridges2(scale = 2,,color = "white", rel_min_height = .01, alpha = .8) +
+  scale_y_discrete(limits = rev(levels(metrics.trial$freq.bin)),
+                   labels = rev(seq(.1,1,.1))) + 
+  theme_ridges(center = TRUE) + scale_x_continuous(limits = c(.8, 1.2)) + 
+  labs(x = "Relative Effective R", y = "Frequency", fill = "Viral Stage") +
+  theme(legend.position = c(.75,.7)) -> ratio.meanR.freq
+
+save_plot(ratio.meanR.freq, filename = "exploratory.figs/ratio.meanR.plot.pdf", base_height = 8)  
+  
+  
+metrics.trial %>%
+  filter(phase == "Growth") %>%
+  select(success, phase,simDay, antigenType, varR, ratio.meanR, frequency, freq.bin, scale.varR) %>%
+  ggplot(aes(x = scale.varR, y = freq.bin, color = success, fill = success)) + 
+  geom_density_ridges2(scale = 2,color = "white", rel_min_height = .01, alpha = .8) +
+  scale_y_discrete(limits = rev(levels(metrics.trial$freq.bin)),
+                   labels = rev(seq(.1,1,.1))) + 
+  theme_ridges(center = TRUE) +  scale_x_continuous(limits = c(-2, 4)) +
+  labs(x = "Fitness Variance (scaled)", y = "Frequency", fill = "") +
+  theme(legend.position = c(.75,.3)) -> varR.v.growth
+
+
+save_plot(varR.v.growth, filename = "exploratory.figs/varR.v.growth.pdf", base_height = 8)
+
+
+
+###### Sample variance
+population.1.R = c(1.02, 1.02, 1.02,  1.02, 1.02, 1.1)
+mean(population.1.R)
+sum((population.1.R - mean(population.1.R))^2)/length(population.1.R)
+
+
 
